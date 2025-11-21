@@ -1,0 +1,25 @@
+# backend/src/main/resources/application.yaml
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/cryptodb
+    username: postgres
+    password: postgres
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+server:
+  port: 8080
+
+
+jwt:
+  secret: "change_this_to_a_long_random_secret"
+  expiration-seconds: 3600
+
+crypto:
+  api:
+    base-url: "https://api.coingecko.com/api/v3" # example
