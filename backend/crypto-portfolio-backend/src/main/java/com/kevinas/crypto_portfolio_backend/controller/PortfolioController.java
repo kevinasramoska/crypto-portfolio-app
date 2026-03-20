@@ -1,8 +1,8 @@
 package com.kevinas.crypto_portfolio_backend.controller;
 
-
 import com.kevinas.crypto_portfolio_backend.dto.HoldingRequest;
 import com.kevinas.crypto_portfolio_backend.dto.HoldingResponse;
+import com.kevinas.crypto_portfolio_backend.dto.PortfolioSummaryResponse;
 import com.kevinas.crypto_portfolio_backend.service.PortfolioService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,10 +23,13 @@ public class PortfolioController {
         return ResponseEntity.ok(portfolioService.getUserHoldings());
     }
 
+    @GetMapping("/summary")
+    public ResponseEntity<PortfolioSummaryResponse> getSummary() {
+        return ResponseEntity.ok(portfolioService.getPortfolioSummary());
+    }
+
     @PostMapping("/holdings")
-    public ResponseEntity<HoldingResponse> addHolding(
-            @Valid @RequestBody HoldingRequest request
-    ) {
+    public ResponseEntity<HoldingResponse> addHolding(@Valid @RequestBody HoldingRequest request) {
         return ResponseEntity.ok(portfolioService.addHolding(request));
     }
 

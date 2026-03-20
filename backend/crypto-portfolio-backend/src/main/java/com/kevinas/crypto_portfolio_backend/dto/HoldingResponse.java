@@ -6,5 +6,10 @@ public record HoldingResponse(
         Long id,
         String symbol,
         String name,
-        BigDecimal quantity
+        BigDecimal quantity,
+        BigDecimal averageBuyPriceUsd,
+        BigDecimal currentPriceUsd,
+        BigDecimal investedValueUsd,
+        BigDecimal currentValueUsd,
+        BigDecimal profitLossUsd
 ) {}
