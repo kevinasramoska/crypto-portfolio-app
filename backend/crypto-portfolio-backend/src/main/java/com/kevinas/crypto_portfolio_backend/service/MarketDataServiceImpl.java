@@ -1,88 +1,82 @@
 package com.kevinas.crypto_portfolio_backend.service;
 
-import com.kevinas.crypto_portfolio_backend.util.CoinGeckoSymbolMapper;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
-
+import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class MarketDataServiceImpl implements MarketDataService {
 
-    private final WebClient.Builder webClientBuilder;
+    private final RestTemplate restTemplate;
 
-    private final Map<String, BigDecimal> priceCache = new ConcurrentHashMap<>();
+    private static final Map<String, String> SYMBOL_TO_COINGECKO_ID = Map.ofEntries(
+            Map.entry("BTC", "bitcoin"),
+            Map.entry("ETH", "ethereum"),
+            Map.entry("SOL", "solana"),
+            Map.entry("ADA", "cardano"),
+            Map.entry("XRP", "ripple"),
+            Map.entry("DOGE", "dogecoin"),
+            Map.entry("DOT", "polkadot"),
+            Map.entry("AVAX", "avalanche-2"),
+            Map.entry("MATIC", "matic-network"),
+            Map.entry("LINK", "chainlink"),
+            Map.entry("LTC", "litecoin"),
+            Map.entry("BNB", "binancecoin")
+    );
 
     @Override
-    public Map<String, BigDecimal> getCurrentPricesForSymbols(Iterable<String> symbols) {
-        List<String> symbolList = new ArrayList<>();
-        symbols.forEach(s -> symbolList.add(s.toLowerCase()));
-
-        if (priceCache.isEmpty()) {
-            refreshPriceCache(symbolList);
-        }
-
+    public Map<String, BigDecimal> getCurrentPricesForSymbols(List<String> symbols) {
         Map<String, BigDecimal> result = new HashMap<>();
-        for (String s : symbolList) {
-            String geckoId = com.kevinas.crypto_portfolio_backend.util.CoinGeckoSymbolMapper.map(s);
-            result.put(s.toUpperCase(), priceCache.get(geckoId));
-        }
-        return result;
-    }
 
-    @Override
-    public void refreshPriceCache() {
-        refreshPriceCache(new ArrayList<>(priceCache.keySet()));
-    }
-
-    private void refreshPriceCache(List<String> symbols) {
-        if (symbols.isEmpty()) return;
-
-        List<String> geckoIds = symbols.stream()
-                .map(s -> CoinGeckoSymbolMapper.map(s.toLowerCase()))
-                .filter(Objects::nonNull)
-                .distinct()
-                .toList();
-
-        String joinedIds = String.join(",", geckoIds);
-
-
-        String url = String.format(
-                "https://api.coingecko.com/api/v3/simple/price?ids=%s&vs_currencies=usd",
-                joinedIds
-        );
-
-        log.info("Fetching prices for: {}", joinedIds);
-
-        Map<String, Map<String, Double>> response = webClientBuilder.build()
-                .get()
-                .uri(url)
-                .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<Map<String, Map<String, Double>>>() {})
-                .block();
-
-        if (response == null) {
-            log.warn("CoinGecko returned empty response");
-            return;
+        if (symbols == null || symbols.isEmpty()) {
+            return result;
         }
 
-        for (var entry : response.entrySet()) {
-            String coinId = entry.getKey();
-            Double price = entry.getValue().get("usd");
-            if (price != null) {
-                priceCache.put(coinId.toLowerCase(), BigDecimal.valueOf(price));
-
+        Map<String, String> symbolToId = new HashMap<>();
+        for (String symbol : symbols) {
+            String upper = symbol.toUpperCase(Locale.ROOT);
+            String coinId = SYMBOL_TO_COINGECKO_ID.get(upper);
+            if (coinId != null) {
+                symbolToId.put(upper, coinId);
             }
         }
 
-        log.info("Updated cache: {}", priceCache);
+        if (symbolToId.isEmpty()) {
+            return result;
+        }
+
+        String ids = String.join(",", symbolToId.values());
+        String url = "https://api.coingecko.com/api/v3/simple/price?ids=" + ids + "&vs_currencies=usd";
+
+        try {
+            Map<String, Map<String, Object>> response = restTemplate.getForObject(url, Map.class);
+
+            if (response == null) {
+                return result;
+            }
+
+            for (Map.Entry<String, String> entry : symbolToId.entrySet()) {
+                String symbol = entry.getKey();
+                String coinId = entry.getValue();
+
+                Map<String, Object> priceData = response.get(coinId);
+                if (priceData != null && priceData.get("usd") != null) {
+                    Object usdValue = priceData.get("usd");
+                    result.put(symbol, new BigDecimal(usdValue.toString()));
+                }
+            }
+        } catch (Exception ignored) {
+            // For now, fail safely and return whatever prices we could resolve.
+            // Later, replace with proper logging.
+        }
+
+        return result;
     }
 }
