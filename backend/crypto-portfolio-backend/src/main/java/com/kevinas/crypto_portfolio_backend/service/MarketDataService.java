@@ -5,5 +5,6 @@ import java.util.List;
 import java.util.Map;
 
 public interface MarketDataService {
-    Map<String, BigDecimal> getCurrentPricesForSymbols(List<String> symbols);
+    BigDecimal getCurrentPrice(String symbol);
+    Map<String, BigDecimal> getCurrentPrices(List<String> symbols);
 }

@@ -10,6 +10,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -25,16 +26,16 @@ class MarketDataServiceImplTest {
     }
 
     @Test
-    void getCurrentPricesForSymbols_shouldReturnMappedPrices() {
+    void getCurrentPrices_shouldReturnMappedPrices() {
         Map<String, Map<String, Object>> apiResponse = Map.of(
                 "bitcoin", Map.of("usd", 60000),
                 "ethereum", Map.of("usd", 2500)
         );
 
-        when(restTemplate.getForObject(anyString(), org.mockito.ArgumentMatchers.eq(Map.class)))
+        when(restTemplate.getForObject(anyString(), eq(Map.class)))
                 .thenReturn(apiResponse);
 
-        Map<String, BigDecimal> prices = marketDataService.getCurrentPricesForSymbols(
+        Map<String, BigDecimal> prices = marketDataService.getCurrentPrices(
                 List.of("BTC", "ETH")
         );
 

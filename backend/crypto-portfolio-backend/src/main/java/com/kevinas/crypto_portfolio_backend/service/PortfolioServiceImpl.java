@@ -1,163 +1,153 @@
 package com.kevinas.crypto_portfolio_backend.service;
 
-import com.kevinas.crypto_portfolio_backend.dto.HoldingRequest;
 import com.kevinas.crypto_portfolio_backend.dto.HoldingResponse;
+import com.kevinas.crypto_portfolio_backend.dto.PortfolioHoldingSummaryResponse;
 import com.kevinas.crypto_portfolio_backend.dto.PortfolioSummaryResponse;
-import com.kevinas.crypto_portfolio_backend.model.Coin;
 import com.kevinas.crypto_portfolio_backend.model.Holding;
+import com.kevinas.crypto_portfolio_backend.model.Transaction;
+import com.kevinas.crypto_portfolio_backend.model.TransactionType;
 import com.kevinas.crypto_portfolio_backend.model.User;
-import com.kevinas.crypto_portfolio_backend.repository.CoinRepository;
 import com.kevinas.crypto_portfolio_backend.repository.HoldingRepository;
+import com.kevinas.crypto_portfolio_backend.repository.TransactionRepository;
 import com.kevinas.crypto_portfolio_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class PortfolioServiceImpl implements PortfolioService {
 
+    private static final int USD_SCALE = 2;
+    private static final int QTY_SCALE = 8;
+
     private final HoldingRepository holdingRepository;
-    private final CoinRepository coinRepository;
+    private final TransactionRepository transactionRepository;
     private final UserRepository userRepository;
     private final MarketDataService marketDataService;
 
     @Override
     public List<HoldingResponse> getUserHoldings() {
-        User user = getCurrentUser();
-        List<Holding> holdings = holdingRepository.findByUser(user);
+        User user = getAuthenticatedUser();
 
-        List<String> symbols = holdings.stream()
-                .map(h -> h.getCoin().getSymbol())
+        return holdingRepository.findByUser(user).stream()
+                .map(holding -> {
+                    BigDecimal currentPriceUsd = safePriceLookup(holding.getCoin().getSymbol());
+                    BigDecimal investedValueUsd = money(
+                            holding.getQuantity().multiply(holding.getAverageBuyPriceUsd())
+                    );
+                    BigDecimal currentValueUsd = money(
+                            holding.getQuantity().multiply(currentPriceUsd)
+                    );
+                    BigDecimal profitLossUsd = money(
+                            currentValueUsd.subtract(investedValueUsd)
+                    );
+
+                    return new HoldingResponse(
+                            holding.getId(),
+                            holding.getCoin().getSymbol(),
+                            holding.getCoin().getName(),
+                            scaleQty(holding.getQuantity()),
+                            money(holding.getAverageBuyPriceUsd()),
+                            money(currentPriceUsd),
+                            investedValueUsd,
+                            currentValueUsd,
+                            profitLossUsd
+                    );
+                })
                 .toList();
-
-        Map<String, BigDecimal> prices = marketDataService.getCurrentPricesForSymbols(symbols);
-
-        return holdings.stream()
-                .map(h -> toResponse(h, prices))
-                .toList();
-    }
-
-    @Override
-    public HoldingResponse addHolding(HoldingRequest request) {
-        User user = getCurrentUser();
-
-        Coin coin = coinRepository.findBySymbolIgnoreCase(request.symbol())
-                .orElseGet(() -> coinRepository.save(
-                        Coin.builder()
-                                .symbol(request.symbol().toUpperCase())
-                                .name(request.name())
-                                .build()
-                ));
-
-        Holding holding = Holding.builder()
-                .user(user)
-                .coin(coin)
-                .quantity(request.quantity())
-                .averageBuyPriceUsd(request.averageBuyPriceUsd())
-                .createdAt(Instant.now())
-                .updatedAt(Instant.now())
-                .build();
-
-        Holding saved = holdingRepository.save(holding);
-        Map<String, BigDecimal> prices = marketDataService.getCurrentPricesForSymbols(List.of(saved.getCoin().getSymbol()));
-        return toResponse(saved, prices);
-    }
-
-    @Override
-    public HoldingResponse updateHolding(Long id, HoldingRequest request) {
-        User user = getCurrentUser();
-
-        Holding holding = holdingRepository.findById(id)
-                .filter(h -> h.getUser().getId().equals(user.getId()))
-                .orElseThrow(() -> new IllegalArgumentException("Holding not found"));
-
-        Coin coin = coinRepository.findBySymbolIgnoreCase(request.symbol())
-                .orElseGet(() -> coinRepository.save(
-                        Coin.builder()
-                                .symbol(request.symbol().toUpperCase())
-                                .name(request.name())
-                                .build()
-                ));
-
-        holding.setCoin(coin);
-        holding.setQuantity(request.quantity());
-        holding.setAverageBuyPriceUsd(request.averageBuyPriceUsd());
-        holding.setUpdatedAt(Instant.now());
-
-        Holding saved = holdingRepository.save(holding);
-        Map<String, BigDecimal> prices = marketDataService.getCurrentPricesForSymbols(List.of(saved.getCoin().getSymbol()));
-        return toResponse(saved, prices);
-    }
-
-    @Override
-    public void deleteHolding(Long id) {
-        User user = getCurrentUser();
-
-        Holding holding = holdingRepository.findById(id)
-                .filter(h -> h.getUser().getId().equals(user.getId()))
-                .orElseThrow(() -> new IllegalArgumentException("Holding not found"));
-
-        holdingRepository.delete(holding);
     }
 
     @Override
     public PortfolioSummaryResponse getPortfolioSummary() {
-        List<HoldingResponse> holdings = getUserHoldings();
+        User user = getAuthenticatedUser();
 
-        BigDecimal totalInvested = holdings.stream()
-                .map(HoldingResponse::investedValueUsd)
+        List<Holding> holdings = holdingRepository.findByUser(user);
+        List<Transaction> transactions = transactionRepository.findByUserOrderByCreatedAtDesc(user);
+
+        BigDecimal totalInvestedUsd = BigDecimal.ZERO;
+        BigDecimal totalCurrentValueUsd = BigDecimal.ZERO;
+        BigDecimal totalUnrealisedProfitLossUsd = BigDecimal.ZERO;
+
+        List<PortfolioHoldingSummaryResponse> holdingSummaries = holdings.stream()
+                .map(holding -> {
+                    BigDecimal quantity = scaleQty(holding.getQuantity());
+                    BigDecimal averageBuyPriceUsd = money(holding.getAverageBuyPriceUsd());
+                    BigDecimal currentPriceUsd = safePriceLookup(holding.getCoin().getSymbol());
+
+                    BigDecimal investedValueUsd = money(quantity.multiply(averageBuyPriceUsd));
+                    BigDecimal currentValueUsd = money(quantity.multiply(currentPriceUsd));
+                    BigDecimal unrealisedProfitLossUsd = money(currentValueUsd.subtract(investedValueUsd));
+
+                    return PortfolioHoldingSummaryResponse.builder()
+                            .symbol(holding.getCoin().getSymbol())
+                            .name(holding.getCoin().getName())
+                            .quantity(quantity)
+                            .averageBuyPriceUsd(averageBuyPriceUsd)
+                            .currentPriceUsd(currentPriceUsd)
+                            .investedValueUsd(investedValueUsd)
+                            .currentValueUsd(currentValueUsd)
+                            .unrealisedProfitLossUsd(unrealisedProfitLossUsd)
+                            .build();
+                })
+                .toList();
+
+        for (PortfolioHoldingSummaryResponse holding : holdingSummaries) {
+            totalInvestedUsd = totalInvestedUsd.add(holding.getInvestedValueUsd());
+            totalCurrentValueUsd = totalCurrentValueUsd.add(holding.getCurrentValueUsd());
+            totalUnrealisedProfitLossUsd = totalUnrealisedProfitLossUsd.add(holding.getUnrealisedProfitLossUsd());
+        }
+
+        BigDecimal totalRealisedProfitLossUsd = transactions.stream()
+                .filter(transaction -> transaction.getType() == TransactionType.SELL)
+                .map(Transaction::getRealisedProfitUsd)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal totalCurrentValue = holdings.stream()
-                .map(HoldingResponse::currentValueUsd)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        totalInvestedUsd = money(totalInvestedUsd);
+        totalCurrentValueUsd = money(totalCurrentValueUsd);
+        totalUnrealisedProfitLossUsd = money(totalUnrealisedProfitLossUsd);
+        totalRealisedProfitLossUsd = money(totalRealisedProfitLossUsd);
 
-        BigDecimal totalProfitLoss = totalCurrentValue.subtract(totalInvested);
-
-        return new PortfolioSummaryResponse(
-                scale(totalInvested),
-                scale(totalCurrentValue),
-                scale(totalProfitLoss)
+        BigDecimal totalProfitLossUsd = money(
+                totalRealisedProfitLossUsd.add(totalUnrealisedProfitLossUsd)
         );
+
+        return PortfolioSummaryResponse.builder()
+                .totalInvestedUsd(totalInvestedUsd)
+                .totalCurrentValueUsd(totalCurrentValueUsd)
+                .totalUnrealisedProfitLossUsd(totalUnrealisedProfitLossUsd)
+                .totalRealisedProfitLossUsd(totalRealisedProfitLossUsd)
+                .totalProfitLossUsd(totalProfitLossUsd)
+                .holdings(holdingSummaries)
+                .build();
     }
 
-    private HoldingResponse toResponse(Holding holding, Map<String, BigDecimal> prices) {
-        BigDecimal currentPrice = prices.getOrDefault(
-                holding.getCoin().getSymbol().toUpperCase(),
-                BigDecimal.ZERO
-        );
+    private User getAuthenticatedUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = authentication.getName();
 
-        BigDecimal investedValue = holding.getQuantity().multiply(holding.getAverageBuyPriceUsd());
-        BigDecimal currentValue = holding.getQuantity().multiply(currentPrice);
-        BigDecimal profitLoss = currentValue.subtract(investedValue);
-
-        return new HoldingResponse(
-                holding.getId(),
-                holding.getCoin().getSymbol(),
-                holding.getCoin().getName(),
-                scale(holding.getQuantity()),
-                scale(holding.getAverageBuyPriceUsd()),
-                scale(currentPrice),
-                scale(investedValue),
-                scale(currentValue),
-                scale(profitLoss)
-        );
-    }
-
-    private User getCurrentUser() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalStateException("Logged in user not found"));
+                .orElseThrow(() -> new RuntimeException("Authenticated user not found"));
     }
 
-    private BigDecimal scale(BigDecimal value) {
-        return value.setScale(2, RoundingMode.HALF_UP);
+    private BigDecimal safePriceLookup(String symbol) {
+        BigDecimal price = marketDataService.getCurrentPrice(symbol);
+        if (price == null) {
+            return BigDecimal.ZERO.setScale(USD_SCALE, RoundingMode.HALF_UP);
+        }
+        return money(price);
+    }
+
+    private BigDecimal money(BigDecimal value) {
+        return value.setScale(USD_SCALE, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal scaleQty(BigDecimal value) {
+        return value.setScale(QTY_SCALE, RoundingMode.HALF_UP);
     }
 }

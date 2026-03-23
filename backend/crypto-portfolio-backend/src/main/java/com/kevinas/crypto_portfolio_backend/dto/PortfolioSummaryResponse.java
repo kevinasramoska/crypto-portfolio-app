@@ -1,9 +1,22 @@
 package com.kevinas.crypto_portfolio_backend.dto;
 
-import java.math.BigDecimal;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-public record PortfolioSummaryResponse(
-        BigDecimal totalInvestedUsd,
-        BigDecimal totalCurrentValueUsd,
-        BigDecimal totalProfitLossUsd
-) {}
+import java.math.BigDecimal;
+import java.util.List;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class PortfolioSummaryResponse {
+    private BigDecimal totalInvestedUsd;
+    private BigDecimal totalCurrentValueUsd;
+    private BigDecimal totalUnrealisedProfitLossUsd;
+    private BigDecimal totalRealisedProfitLossUsd;
+    private BigDecimal totalProfitLossUsd;
+    private List<PortfolioHoldingSummaryResponse> holdings;
+}

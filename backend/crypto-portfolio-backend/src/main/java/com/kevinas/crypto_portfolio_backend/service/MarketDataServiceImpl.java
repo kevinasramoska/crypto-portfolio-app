@@ -32,7 +32,17 @@ public class MarketDataServiceImpl implements MarketDataService {
     );
 
     @Override
-    public Map<String, BigDecimal> getCurrentPricesForSymbols(List<String> symbols) {
+    public BigDecimal getCurrentPrice(String symbol) {
+        if (symbol == null || symbol.isBlank()) {
+            return BigDecimal.ZERO;
+        }
+
+        Map<String, BigDecimal> prices = getCurrentPrices(List.of(symbol));
+        return prices.getOrDefault(symbol.toUpperCase(Locale.ROOT), BigDecimal.ZERO);
+    }
+
+    @Override
+    public Map<String, BigDecimal> getCurrentPrices(List<String> symbols) {
         Map<String, BigDecimal> result = new HashMap<>();
 
         if (symbols == null || symbols.isEmpty()) {
@@ -73,8 +83,7 @@ public class MarketDataServiceImpl implements MarketDataService {
                 }
             }
         } catch (Exception ignored) {
-            // For now, fail safely and return whatever prices we could resolve.
-            // Later, replace with proper logging.
+            // Fail safely for now.
         }
 
         return result;

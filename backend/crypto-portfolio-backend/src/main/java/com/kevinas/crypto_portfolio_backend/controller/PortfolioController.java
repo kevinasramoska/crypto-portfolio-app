@@ -1,13 +1,13 @@
 package com.kevinas.crypto_portfolio_backend.controller;
 
-import com.kevinas.crypto_portfolio_backend.dto.HoldingRequest;
 import com.kevinas.crypto_portfolio_backend.dto.HoldingResponse;
 import com.kevinas.crypto_portfolio_backend.dto.PortfolioSummaryResponse;
 import com.kevinas.crypto_portfolio_backend.service.PortfolioService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
@@ -24,26 +24,7 @@ public class PortfolioController {
     }
 
     @GetMapping("/summary")
-    public ResponseEntity<PortfolioSummaryResponse> getSummary() {
+    public ResponseEntity<PortfolioSummaryResponse> getPortfolioSummary() {
         return ResponseEntity.ok(portfolioService.getPortfolioSummary());
-    }
-
-    @PostMapping("/holdings")
-    public ResponseEntity<HoldingResponse> addHolding(@Valid @RequestBody HoldingRequest request) {
-        return ResponseEntity.ok(portfolioService.addHolding(request));
-    }
-
-    @PutMapping("/holdings/{id}")
-    public ResponseEntity<HoldingResponse> updateHolding(
-            @PathVariable Long id,
-            @Valid @RequestBody HoldingRequest request
-    ) {
-        return ResponseEntity.ok(portfolioService.updateHolding(id, request));
-    }
-
-    @DeleteMapping("/holdings/{id}")
-    public ResponseEntity<Void> deleteHolding(@PathVariable Long id) {
-        portfolioService.deleteHolding(id);
-        return ResponseEntity.noContent().build();
     }
 }
