@@ -1,9 +1,7 @@
 package com.kevinas.crypto_portfolio_backend.service;
 
 import com.kevinas.crypto_portfolio_backend.dto.PortfolioSummaryResponse;
-import com.kevinas.crypto_portfolio_backend.model.Coin;
-import com.kevinas.crypto_portfolio_backend.model.Holding;
-import com.kevinas.crypto_portfolio_backend.model.User;
+import com.kevinas.crypto_portfolio_backend.model.*;
 import com.kevinas.crypto_portfolio_backend.repository.HoldingRepository;
 import com.kevinas.crypto_portfolio_backend.repository.TransactionRepository;
 import com.kevinas.crypto_portfolio_backend.repository.UserRepository;
@@ -98,5 +96,69 @@ class PortfolioServiceImplTest {
         assertEquals(new BigDecimal("22500.00"), holdingSummary.getInvestedValueUsd());
         assertEquals(new BigDecimal("35417.00"), holdingSummary.getCurrentValueUsd());
         assertEquals(new BigDecimal("12917.00"), holdingSummary.getUnrealisedProfitLossUsd());
+    }
+
+    @Test
+    void getPortfolioSummary_shouldCalculateRealisedAndUnrealisedProfitCorrectly_afterMultipleBuysAndSell() {
+        String email = "test@example.com";
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(email, null)
+        );
+
+        User user = new User();
+        user.setId(1L);
+        user.setEmail(email);
+        user.setPassword("encoded-password");
+        user.setCreatedAt(Instant.now());
+
+        Coin btc = new Coin();
+        btc.setId(1L);
+        btc.setSymbol("BTC");
+        btc.setName("Bitcoin");
+
+        Holding holding = new Holding();
+        holding.setId(1L);
+        holding.setUser(user);
+        holding.setCoin(btc);
+        holding.setQuantity(new BigDecimal("0.80000000"));
+        holding.setAverageBuyPriceUsd(new BigDecimal("50000.00"));
+        holding.setCreatedAt(Instant.now());
+        holding.setUpdatedAt(Instant.now());
+
+        Transaction sellTransaction = new Transaction();
+        sellTransaction.setId(1L);
+        sellTransaction.setUser(user);
+        sellTransaction.setCoin(btc);
+        sellTransaction.setType(TransactionType.SELL);
+        sellTransaction.setQuantity(new BigDecimal("0.20000000"));
+        sellTransaction.setPriceUsd(new BigDecimal("60000.00"));
+        sellTransaction.setTotalValueUsd(new BigDecimal("12000.00"));
+        sellTransaction.setRealisedProfitUsd(new BigDecimal("2000.00"));
+        sellTransaction.setCreatedAt(Instant.now());
+
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(holdingRepository.findByUser(user)).thenReturn(List.of(holding));
+        when(transactionRepository.findByUserOrderByCreatedAtDesc(user)).thenReturn(List.of(sellTransaction));
+        when(marketDataService.getCurrentPrice("BTC")).thenReturn(new BigDecimal("65000.00"));
+
+        PortfolioSummaryResponse response = portfolioService.getPortfolioSummary();
+
+        assertEquals(new BigDecimal("40000.00"), response.getTotalInvestedUsd());
+        assertEquals(new BigDecimal("52000.00"), response.getTotalCurrentValueUsd());
+        assertEquals(new BigDecimal("12000.00"), response.getTotalUnrealisedProfitLossUsd());
+        assertEquals(new BigDecimal("2000.00"), response.getTotalRealisedProfitLossUsd());
+        assertEquals(new BigDecimal("14000.00"), response.getTotalProfitLossUsd());
+
+        assertEquals(1, response.getHoldings().size());
+
+        var holdingSummary = response.getHoldings().get(0);
+        assertEquals("BTC", holdingSummary.getSymbol());
+        assertEquals("Bitcoin", holdingSummary.getName());
+        assertEquals(new BigDecimal("0.80000000"), holdingSummary.getQuantity());
+        assertEquals(new BigDecimal("50000.00"), holdingSummary.getAverageBuyPriceUsd());
+        assertEquals(new BigDecimal("65000.00"), holdingSummary.getCurrentPriceUsd());
+        assertEquals(new BigDecimal("40000.00"), holdingSummary.getInvestedValueUsd());
+        assertEquals(new BigDecimal("52000.00"), holdingSummary.getCurrentValueUsd());
+        assertEquals(new BigDecimal("12000.00"), holdingSummary.getUnrealisedProfitLossUsd());
     }
 }
