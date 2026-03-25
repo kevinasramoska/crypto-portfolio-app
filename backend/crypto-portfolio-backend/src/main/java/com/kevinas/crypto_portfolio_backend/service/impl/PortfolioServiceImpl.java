@@ -1,4 +1,4 @@
-package com.kevinas.crypto_portfolio_backend.service;
+package com.kevinas.crypto_portfolio_backend.service.impl;
 
 import com.kevinas.crypto_portfolio_backend.dto.HoldingResponse;
 import com.kevinas.crypto_portfolio_backend.dto.PortfolioHoldingSummaryResponse;
@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class PortfolioServiceImpl implements PortfolioService {
+public class PortfolioServiceImpl implements com.kevinas.crypto_portfolio_backend.service.PortfolioService {
 
     private static final int USD_SCALE = 2;
     private static final int QTY_SCALE = 8;
@@ -32,7 +32,7 @@ public class PortfolioServiceImpl implements PortfolioService {
     private final HoldingRepository holdingRepository;
     private final TransactionRepository transactionRepository;
     private final UserRepository userRepository;
-    private final MarketDataService marketDataService;
+    private final com.kevinas.crypto_portfolio_backend.service.MarketDataService marketDataService;
 
     @Override
     public List<HoldingResponse> getUserHoldings() {
@@ -63,13 +63,20 @@ public class PortfolioServiceImpl implements PortfolioService {
                             profitLossUsd
                     );
                 })
-                .toList();
+                .collect(Collectors.toList());
     }
 
     @Override
     public PortfolioSummaryResponse getCurrentUserPortfolioSummary() {
-        User user = getAuthenticatedUser();
+        return computePortfolioSummary(getAuthenticatedUser());
+    }
 
+    @Override
+    public PortfolioSummaryResponse getPortfolioSummaryForUser(User user) {
+        return computePortfolioSummary(user);
+    }
+
+    private PortfolioSummaryResponse computePortfolioSummary(User user) {
         // Fetch all transactions sorted by creation time ascending
         List<Transaction> transactions = transactionRepository.findByUserOrderByCreatedAtAsc(user);
 
@@ -161,10 +168,9 @@ public class PortfolioServiceImpl implements PortfolioService {
 
     private User getAuthenticatedUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String email = authentication.getName();
-
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Authenticated user not found"));
+        String username = authentication.getName();
+        return userRepository.findByEmail(username)
+                .orElseThrow(() -> new RuntimeException("User not found: " + username));
     }
 
     private BigDecimal safePriceLookup(String symbol) {
@@ -179,7 +185,7 @@ public class PortfolioServiceImpl implements PortfolioService {
         return value.setScale(USD_SCALE, RoundingMode.HALF_UP);
     }
 
-    private BigDecimal scaleQty(BigDecimal value) {
-        return value.setScale(QTY_SCALE, RoundingMode.HALF_UP);
+    private BigDecimal scaleQty(BigDecimal quantity) {
+        return quantity.setScale(QTY_SCALE, RoundingMode.HALF_UP);
     }
 }

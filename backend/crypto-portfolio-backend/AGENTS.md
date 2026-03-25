@@ -20,7 +20,7 @@ Data flows: User auth → JWT tokens → Secured endpoints → Service layer →
 - **Exception Handling**: Custom exceptions in `exception/` package, global handler in config
 - **Accounting Rules**: Transactions validated against available holdings (SELL cannot exceed holdings); portfolio summary computed from transaction history using weighted average cost
 - **Testing**: Integration tests with `@SpringBootTest`, MockMvc for endpoints, `@MockBean` for external services like `MarketDataService`, H2 in-memory DB for isolation
-- **Flyway Migrations**: Schema changes in `V1__init_schema.sql` and `V2__transaction_constraints.sql`, tables: users, coins, holdings, transactions, user_roles
+- **Flyway Migrations**: Schema changes in `V1__init_schema.sql`, `V2__transaction_constraints.sql`, and `V3__portfolio_snapshots.sql`, tables: users, coins, holdings, transactions, user_roles, portfolio_snapshots
 
 ## Developer Workflows
 - **Run App**: `./mvnw spring-boot:run` (requires PostgreSQL running)
