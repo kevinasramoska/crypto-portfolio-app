@@ -71,7 +71,7 @@ public class TransactionServiceImpl implements TransactionService {
                 .build();
 
         Transaction saved = transactionRepository.save(transaction);
-        portfolioService.createSnapshotForCurrentUser();
+        safelyCreateSnapshot();
 
         return toResponse(saved);
     }
@@ -167,6 +167,15 @@ public class TransactionServiceImpl implements TransactionService {
                 scaleMoney(transaction.getRealisedProfitUsd()),
                 transaction.getCreatedAt()
         );
+    }
+
+
+    private void safelyCreateSnapshot() {
+        try {
+            portfolioService.createSnapshotForCurrentUser();
+        } catch (RuntimeException ignored) {
+            // Snapshotting is best-effort and should not fail transaction writes.
+        }
     }
 
     private User getCurrentUser() {

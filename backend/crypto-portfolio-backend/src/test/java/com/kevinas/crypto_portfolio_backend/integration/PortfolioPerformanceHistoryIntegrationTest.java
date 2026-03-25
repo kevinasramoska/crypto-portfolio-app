@@ -23,6 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 import java.time.Instant;
 
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -107,6 +108,30 @@ class PortfolioPerformanceHistoryIntegrationTest {
                 .andExpect(jsonPath("$.history[0].totalInvestedUsd").value(50000.00))
                 .andExpect(jsonPath("$.history[0].totalCurrentValueUsd").value(60000.00))
                 .andExpect(jsonPath("$.history[0].totalProfitLossUsd").value(10000.00));
+    }
+
+
+    @Test
+    void transactionShouldSucceed_whenSnapshotPriceLookupFails() throws Exception {
+        String token = getJwtToken("snapshotfallback@example.com", "password");
+
+        doThrow(new RuntimeException("market unavailable"))
+                .when(marketDataService)
+                .getCurrentPrice("BTC");
+
+        TransactionRequest buy = new TransactionRequest(
+                "BTC",
+                "Bitcoin",
+                TransactionType.BUY,
+                new BigDecimal("1.00000000"),
+                new BigDecimal("50000.00")
+        );
+
+        mockMvc.perform(post("/api/transactions")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(buy)))
+                .andExpect(status().isOk());
     }
 
     @Test

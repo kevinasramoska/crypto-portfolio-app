@@ -223,11 +223,15 @@ public class PortfolioServiceImpl implements PortfolioService {
     }
 
     private BigDecimal safePriceLookup(String symbol) {
-        BigDecimal price = marketDataService.getCurrentPrice(symbol);
-        if (price == null) {
+        try {
+            BigDecimal price = marketDataService.getCurrentPrice(symbol);
+            if (price == null) {
+                return BigDecimal.ZERO.setScale(USD_SCALE, RoundingMode.HALF_UP);
+            }
+            return money(price);
+        } catch (RuntimeException ex) {
             return BigDecimal.ZERO.setScale(USD_SCALE, RoundingMode.HALF_UP);
         }
-        return money(price);
     }
 
     private BigDecimal money(BigDecimal value) {
