@@ -30,6 +30,7 @@ public class TransactionServiceImpl implements TransactionService {
     private final HoldingRepository holdingRepository;
     private final CoinRepository coinRepository;
     private final UserRepository userRepository;
+    private final PortfolioService portfolioService;
 
     @Override
     @Transactional
@@ -70,6 +71,7 @@ public class TransactionServiceImpl implements TransactionService {
                 .build();
 
         Transaction saved = transactionRepository.save(transaction);
+        portfolioService.createSnapshotForCurrentUser();
 
         return toResponse(saved);
     }
