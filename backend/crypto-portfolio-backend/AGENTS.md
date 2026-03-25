@@ -19,13 +19,13 @@ Data flows: User auth → JWT tokens → Secured endpoints → Service layer →
 - **User Context**: Access authenticated user via `SecurityContextHolder.getContext().getAuthentication()` in services
 - **Exception Handling**: Custom exceptions in `exception/` package, global handler in config
 - **Accounting Rules**: Transactions validated against available holdings (SELL cannot exceed holdings); portfolio summary computed from transaction history using weighted average cost
-- **Testing**: Integration tests with `@SpringBootTest`, MockMvc for endpoints, `@MockBean` for external services like `MarketDataService`, Testcontainers for PostgreSQL isolation
+- **Testing**: Integration tests with `@SpringBootTest`, MockMvc for endpoints, `@MockBean` for external services like `MarketDataService`, H2 in-memory DB for isolation
 - **Flyway Migrations**: Schema changes in `V1__init_schema.sql` and `V2__transaction_constraints.sql`, tables: users, coins, holdings, transactions, user_roles
 
 ## Developer Workflows
 - **Run App**: `./mvnw spring-boot:run` (requires PostgreSQL running)
 - **Database Setup**: `docker-compose up` for Postgres + PgAdmin (ports 5432, 5050)
-- **Tests**: `./mvnw test` (includes integration tests with test profile using Testcontainers; requires Docker)
+- **Tests**: `./mvnw test` (includes integration tests with test profile using H2; requires no Docker)
 - **Build**: `./mvnw clean package` (creates JAR in `target/`)
 - **Debug**: Use Spring Boot DevTools, set breakpoints in service impls
 - **API Docs**: Swagger UI at `/swagger-ui.html` (SpringDoc OpenAPI)

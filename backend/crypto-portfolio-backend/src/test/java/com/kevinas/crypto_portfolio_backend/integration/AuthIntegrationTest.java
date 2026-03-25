@@ -34,8 +34,8 @@ class AuthIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").exists())
-                .andExpect(jsonPath("$.token").isString());
+                .andExpect(jsonPath("$.accessToken").exists())
+                .andExpect(jsonPath("$.accessToken").isString());
     }
 
     @Test
@@ -53,7 +53,7 @@ class AuthIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").exists())
-                .andExpect(jsonPath("$.token").isString());
+                .andExpect(jsonPath("$.accessToken").exists())
+                .andExpect(jsonPath("$.accessToken").isString());
     }
 }

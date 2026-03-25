@@ -251,7 +251,7 @@ class CoreUserJourneyIntegrationTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(oversellBody))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").exists());
 
         // Holdings should remain unchanged

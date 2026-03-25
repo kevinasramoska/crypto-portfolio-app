@@ -88,11 +88,11 @@ class PortfolioSummaryIntegrationTest {
         mockMvc.perform(get("/api/portfolio/summary")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalInvestedUsd").value(100000.00))  // 0.5 BTC * 50000 + 2 ETH * 2500
-                .andExpect(jsonPath("$.totalCurrentValueUsd").value(120000.00))  // 0.5 BTC * 60000 + 2 ETH * 3000
-                .andExpect(jsonPath("$.totalUnrealisedProfitLossUsd").value(20000.00))  // 120000 - 100000
+                .andExpect(jsonPath("$.totalInvestedUsd").value(30000.00))  // 0.5 BTC * 50000 + 2 ETH * 2500
+                .andExpect(jsonPath("$.totalCurrentValueUsd").value(36000.00))  // 0.5 BTC * 60000 + 2 ETH * 3000
+                .andExpect(jsonPath("$.totalUnrealisedProfitLossUsd").value(6000.00))  // 36000 - 30000
                 .andExpect(jsonPath("$.totalRealisedProfitLossUsd").value(2500.00))  // 0.5 * (55000 - 50000) = 2500
-                .andExpect(jsonPath("$.totalProfitLossUsd").value(22500.00))  // 20000 + 2500
+                .andExpect(jsonPath("$.totalProfitLossUsd").value(8500.00))  // 6000 + 2500
                 .andExpect(jsonPath("$.holdings").isArray())
                 .andExpect(jsonPath("$.holdings").isNotEmpty());
     }
