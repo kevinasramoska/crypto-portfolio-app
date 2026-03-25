@@ -1,20 +1,29 @@
 package com.kevinas.crypto_portfolio_backend.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class MarketDataServiceImpl implements MarketDataService {
 
     private final RestTemplate restTemplate;
+
+    private static final Duration CACHE_TTL = Duration.ofSeconds(60);
+
+    private final Map<String, CachedPrice> priceCache = new ConcurrentHashMap<>();
 
     private static final Map<String, String> SYMBOL_TO_COINGECKO_ID = Map.ofEntries(
             Map.entry("BTC", "bitcoin"),
@@ -37,8 +46,9 @@ public class MarketDataServiceImpl implements MarketDataService {
             return BigDecimal.ZERO;
         }
 
-        Map<String, BigDecimal> prices = getCurrentPrices(List.of(symbol));
-        return prices.getOrDefault(symbol.toUpperCase(Locale.ROOT), BigDecimal.ZERO);
+        String normalizedSymbol = symbol.toUpperCase(Locale.ROOT);
+        Map<String, BigDecimal> prices = getCurrentPrices(List.of(normalizedSymbol));
+        return prices.getOrDefault(normalizedSymbol, BigDecimal.ZERO);
     }
 
     @Override
@@ -49,43 +59,98 @@ public class MarketDataServiceImpl implements MarketDataService {
             return result;
         }
 
-        Map<String, String> symbolToId = new HashMap<>();
+        Instant now = Instant.now();
+        Map<String, String> symbolToIdToRefresh = new HashMap<>();
+
         for (String symbol : symbols) {
+            if (symbol == null || symbol.isBlank()) {
+                continue;
+            }
+
             String upper = symbol.toUpperCase(Locale.ROOT);
+            CachedPrice cachedPrice = priceCache.get(upper);
+
+            if (isFresh(cachedPrice, now)) {
+                result.put(upper, cachedPrice.price());
+                continue;
+            }
+
             String coinId = SYMBOL_TO_COINGECKO_ID.get(upper);
             if (coinId != null) {
-                symbolToId.put(upper, coinId);
+                symbolToIdToRefresh.put(upper, coinId);
+            } else {
+                log.debug("No CoinGecko mapping found for symbol {}", upper);
             }
         }
 
-        if (symbolToId.isEmpty()) {
-            return result;
+        if (!symbolToIdToRefresh.isEmpty()) {
+            refreshPrices(symbolToIdToRefresh, result, now);
         }
 
-        String ids = String.join(",", symbolToId.values());
+        applyFallbackFromCache(symbols, result);
+
+        return result;
+    }
+
+    private void refreshPrices(
+            Map<String, String> symbolToIdToRefresh,
+            Map<String, BigDecimal> result,
+            Instant now
+    ) {
+        String ids = String.join(",", symbolToIdToRefresh.values());
         String url = "https://api.coingecko.com/api/v3/simple/price?ids=" + ids + "&vs_currencies=usd";
 
         try {
             Map<String, Map<String, Object>> response = restTemplate.getForObject(url, Map.class);
 
             if (response == null) {
-                return result;
+                log.warn("CoinGecko returned null response for ids={}", ids);
+                return;
             }
 
-            for (Map.Entry<String, String> entry : symbolToId.entrySet()) {
+            for (Map.Entry<String, String> entry : symbolToIdToRefresh.entrySet()) {
                 String symbol = entry.getKey();
                 String coinId = entry.getValue();
 
                 Map<String, Object> priceData = response.get(coinId);
                 if (priceData != null && priceData.get("usd") != null) {
                     Object usdValue = priceData.get("usd");
-                    result.put(symbol, new BigDecimal(usdValue.toString()));
+                    BigDecimal price = new BigDecimal(usdValue.toString());
+
+                    result.put(symbol, price);
+                    priceCache.put(symbol, new CachedPrice(price, now));
+
+                    log.debug("Refreshed market price for {} -> {}", symbol, price);
                 }
             }
-        } catch (Exception ignored) {
-            // Fail safely for now.
+        } catch (Exception ex) {
+            log.warn("Failed to fetch market prices from CoinGecko: {}", ex.getMessage());
         }
+    }
 
-        return result;
+    private void applyFallbackFromCache(List<String> symbols, Map<String, BigDecimal> result) {
+        for (String symbol : symbols) {
+            if (symbol == null || symbol.isBlank()) {
+                continue;
+            }
+
+            String upper = symbol.toUpperCase(Locale.ROOT);
+
+            if (!result.containsKey(upper)) {
+                CachedPrice cachedPrice = priceCache.get(upper);
+                if (cachedPrice != null) {
+                    result.put(upper, cachedPrice.price());
+                    log.warn("Using cached fallback price for {}", upper);
+                }
+            }
+        }
+    }
+
+    private boolean isFresh(CachedPrice cachedPrice, Instant now) {
+        return cachedPrice != null
+                && cachedPrice.fetchedAt().plus(CACHE_TTL).isAfter(now);
+    }
+
+    private record CachedPrice(BigDecimal price, Instant fetchedAt) {
     }
 }

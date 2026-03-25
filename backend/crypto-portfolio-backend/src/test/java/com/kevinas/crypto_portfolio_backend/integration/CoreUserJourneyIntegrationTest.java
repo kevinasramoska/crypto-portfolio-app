@@ -227,7 +227,7 @@ class CoreUserJourneyIntegrationTest {
               "type": "BUY",
               "quantity": 0.50000000,
               "priceUsd": 45000.00
-            }
+            }ƒ
             """;
 
         mockMvc.perform(post("/api/transactions")
