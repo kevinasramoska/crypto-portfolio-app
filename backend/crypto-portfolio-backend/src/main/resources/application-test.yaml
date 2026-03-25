@@ -1,0 +1,28 @@
+# backend/src/main/resources/application-test.yaml
+spring:
+  datasource:
+    url: jdbc:tc:postgresql:15:///cryptodb
+    username: test
+    password: test
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  task:
+    scheduling:
+      enabled: false
+
+server:
+  port: 0  # Random port for tests
+
+jwt:
+  secret: test_jwt_secret_for_testing_only
+  expiration-seconds: 60  # Short expiration for test speed
+
+crypto:
+  api:
+    base-url: https://api.coingecko.com/api/v3

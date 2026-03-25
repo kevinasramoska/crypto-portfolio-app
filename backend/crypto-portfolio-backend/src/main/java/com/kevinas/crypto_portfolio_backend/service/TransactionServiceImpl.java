@@ -3,6 +3,7 @@ package com.kevinas.crypto_portfolio_backend.service;
 import com.kevinas.crypto_portfolio_backend.dto.TransactionRequest;
 import com.kevinas.crypto_portfolio_backend.dto.TransactionResponse;
 import com.kevinas.crypto_portfolio_backend.dto.TransactionSummaryResponse;
+import com.kevinas.crypto_portfolio_backend.exception.InsufficientHoldingsException;
 import com.kevinas.crypto_portfolio_backend.model.Coin;
 import com.kevinas.crypto_portfolio_backend.model.Holding;
 import com.kevinas.crypto_portfolio_backend.model.Transaction;
@@ -52,10 +53,7 @@ public class TransactionServiceImpl implements TransactionService {
         if (request.type() == TransactionType.BUY) {
             holding = handleBuy(user, coin, holding, request.quantity(), request.priceUsd());
         } else if (request.type() == TransactionType.SELL) {
-            if (holding == null || holding.getQuantity().compareTo(request.quantity()) < 0) {
-                throw new IllegalArgumentException("Insufficient holdings to complete sell transaction");
-            }
-
+            validateSellTransaction(holding, request.quantity());
             realisedProfitUsd = handleSell(holding, request.quantity(), request.priceUsd());
         } else {
             throw new IllegalArgumentException("Unsupported transaction type");
@@ -77,7 +75,7 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     @Override
-    public List<TransactionResponse> getUserTransactions() {
+    public List<TransactionResponse> getTransactionsForCurrentUser() {
         User user = getCurrentUser();
 
         return transactionRepository.findByUserOrderByCreatedAtDesc(user).stream()
@@ -181,5 +179,12 @@ public class TransactionServiceImpl implements TransactionService {
 
     private BigDecimal scaleQuantity(BigDecimal value) {
         return value.setScale(8, RoundingMode.HALF_UP);
+    }
+
+    private void validateSellTransaction(Holding holding, BigDecimal sellQuantity) {
+        // Prevent overselling: ensure user has sufficient holdings before proceeding
+        if (holding == null || holding.getQuantity().compareTo(sellQuantity) < 0) {
+            throw new InsufficientHoldingsException("Insufficient holdings to complete sell transaction");
+        }
     }
 }

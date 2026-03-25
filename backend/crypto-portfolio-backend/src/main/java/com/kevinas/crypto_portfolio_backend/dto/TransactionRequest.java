@@ -4,6 +4,7 @@ import com.kevinas.crypto_portfolio_backend.model.TransactionType;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 
 import java.math.BigDecimal;
 
@@ -18,10 +19,10 @@ public record TransactionRequest(
         TransactionType type,
 
         @NotNull(message = "Quantity is required")
-        @DecimalMin(value = "0.00000001", message = "Quantity must be greater than 0")
+        @Positive(message = "Quantity must be greater than 0")
         BigDecimal quantity,
 
         @NotNull(message = "Price is required")
-        @DecimalMin(value = "0.01", message = "Price must be greater than 0")
+        @DecimalMin(value = "0.00", message = "Price must be 0 or greater")
         BigDecimal priceUsd
 ) {}

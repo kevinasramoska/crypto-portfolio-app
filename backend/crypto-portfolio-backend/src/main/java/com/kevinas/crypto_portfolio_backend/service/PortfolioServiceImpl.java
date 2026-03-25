@@ -17,7 +17,10 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -64,47 +67,76 @@ public class PortfolioServiceImpl implements PortfolioService {
     }
 
     @Override
-    public PortfolioSummaryResponse getPortfolioSummary() {
+    public PortfolioSummaryResponse getCurrentUserPortfolioSummary() {
         User user = getAuthenticatedUser();
 
-        List<Holding> holdings = holdingRepository.findByUser(user);
-        List<Transaction> transactions = transactionRepository.findByUserOrderByCreatedAtDesc(user);
+        // Fetch all transactions sorted by creation time ascending
+        List<Transaction> transactions = transactionRepository.findByUserOrderByCreatedAtAsc(user);
 
+        // Group transactions by coin
+        Map<Long, List<Transaction>> transactionsByCoin = transactions.stream()
+                .collect(Collectors.groupingBy(t -> t.getCoin().getId()));
+
+        // Compute holdings from transactions
+        List<PortfolioHoldingSummaryResponse> holdingSummaries = new ArrayList<>();
         BigDecimal totalInvestedUsd = BigDecimal.ZERO;
         BigDecimal totalCurrentValueUsd = BigDecimal.ZERO;
         BigDecimal totalUnrealisedProfitLossUsd = BigDecimal.ZERO;
 
-        List<PortfolioHoldingSummaryResponse> holdingSummaries = holdings.stream()
-                .map(holding -> {
-                    BigDecimal quantity = scaleQty(holding.getQuantity());
-                    BigDecimal averageBuyPriceUsd = money(holding.getAverageBuyPriceUsd());
-                    BigDecimal currentPriceUsd = safePriceLookup(holding.getCoin().getSymbol());
+        for (Map.Entry<Long, List<Transaction>> entry : transactionsByCoin.entrySet()) {
+            List<Transaction> coinTransactions = entry.getValue();
+            com.kevinas.crypto_portfolio_backend.model.Coin coin = coinTransactions.get(0).getCoin(); // All have same coin
 
-                    BigDecimal investedValueUsd = money(quantity.multiply(averageBuyPriceUsd));
-                    BigDecimal currentValueUsd = money(quantity.multiply(currentPriceUsd));
-                    BigDecimal unrealisedProfitLossUsd = money(currentValueUsd.subtract(investedValueUsd));
+            // Process transactions to compute current holding
+            BigDecimal quantity = BigDecimal.ZERO;
+            BigDecimal costBasis = BigDecimal.ZERO;
 
-                    return PortfolioHoldingSummaryResponse.builder()
-                            .symbol(holding.getCoin().getSymbol())
-                            .name(holding.getCoin().getName())
-                            .quantity(quantity)
-                            .averageBuyPriceUsd(averageBuyPriceUsd)
-                            .currentPriceUsd(currentPriceUsd)
-                            .investedValueUsd(investedValueUsd)
-                            .currentValueUsd(currentValueUsd)
-                            .unrealisedProfitLossUsd(unrealisedProfitLossUsd)
-                            .build();
-                })
-                .toList();
+            for (Transaction tx : coinTransactions) {
+                if (tx.getType() == TransactionType.BUY) {
+                    quantity = quantity.add(tx.getQuantity());
+                    costBasis = costBasis.add(tx.getQuantity().multiply(tx.getPriceUsd()));
+                } else if (tx.getType() == TransactionType.SELL) {
+                    if (quantity.compareTo(tx.getQuantity()) >= 0) {
+                        // Reduce cost basis proportionally
+                        BigDecimal proportion = tx.getQuantity().divide(quantity, 8, RoundingMode.HALF_UP);
+                        costBasis = costBasis.subtract(costBasis.multiply(proportion));
+                        quantity = quantity.subtract(tx.getQuantity());
+                    } // Else, skip invalid sell (though validation should prevent)
+                }
+            }
 
-        for (PortfolioHoldingSummaryResponse holding : holdingSummaries) {
-            totalInvestedUsd = totalInvestedUsd.add(holding.getInvestedValueUsd());
-            totalCurrentValueUsd = totalCurrentValueUsd.add(holding.getCurrentValueUsd());
-            totalUnrealisedProfitLossUsd = totalUnrealisedProfitLossUsd.add(holding.getUnrealisedProfitLossUsd());
+            // Skip zero or negative quantity holdings
+            if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+
+            BigDecimal averageBuyPriceUsd = costBasis.divide(quantity, 8, RoundingMode.HALF_UP);
+            BigDecimal currentPriceUsd = safePriceLookup(coin.getSymbol());
+            BigDecimal investedValueUsd = money(quantity.multiply(averageBuyPriceUsd));
+            BigDecimal currentValueUsd = money(quantity.multiply(currentPriceUsd));
+            BigDecimal unrealisedProfitLossUsd = money(currentValueUsd.subtract(investedValueUsd));
+
+            PortfolioHoldingSummaryResponse summary = PortfolioHoldingSummaryResponse.builder()
+                    .symbol(coin.getSymbol())
+                    .name(coin.getName())
+                    .quantity(scaleQty(quantity))
+                    .averageBuyPriceUsd(money(averageBuyPriceUsd))
+                    .currentPriceUsd(money(currentPriceUsd))
+                    .investedValueUsd(investedValueUsd)
+                    .currentValueUsd(currentValueUsd)
+                    .unrealisedProfitLossUsd(unrealisedProfitLossUsd)
+                    .build();
+
+            holdingSummaries.add(summary);
+
+            totalInvestedUsd = totalInvestedUsd.add(investedValueUsd);
+            totalCurrentValueUsd = totalCurrentValueUsd.add(currentValueUsd);
+            totalUnrealisedProfitLossUsd = totalUnrealisedProfitLossUsd.add(unrealisedProfitLossUsd);
         }
 
+        // Compute total realized profit/loss from all SELL transactions
         BigDecimal totalRealisedProfitLossUsd = transactions.stream()
-                .filter(transaction -> transaction.getType() == TransactionType.SELL)
+                .filter(tx -> tx.getType() == TransactionType.SELL)
                 .map(Transaction::getRealisedProfitUsd)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 

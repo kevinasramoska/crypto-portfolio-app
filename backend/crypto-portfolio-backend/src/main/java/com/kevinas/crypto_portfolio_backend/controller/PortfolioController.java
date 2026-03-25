@@ -25,6 +25,6 @@ public class PortfolioController {
 
     @GetMapping("/summary")
     public ResponseEntity<PortfolioSummaryResponse> getPortfolioSummary() {
-        return ResponseEntity.ok(portfolioService.getPortfolioSummary());
+        return ResponseEntity.ok(portfolioService.getCurrentUserPortfolioSummary());
     }
 }

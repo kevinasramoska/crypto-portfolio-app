@@ -2,7 +2,6 @@ package com.kevinas.crypto_portfolio_backend.service;
 
 import com.kevinas.crypto_portfolio_backend.dto.PortfolioSummaryResponse;
 import com.kevinas.crypto_portfolio_backend.model.*;
-import com.kevinas.crypto_portfolio_backend.repository.HoldingRepository;
 import com.kevinas.crypto_portfolio_backend.repository.TransactionRepository;
 import com.kevinas.crypto_portfolio_backend.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -24,9 +23,6 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PortfolioServiceImplTest {
-
-    @Mock
-    private HoldingRepository holdingRepository;
 
     @Mock
     private TransactionRepository transactionRepository;
@@ -63,21 +59,22 @@ class PortfolioServiceImplTest {
         btc.setSymbol("BTC");
         btc.setName("Bitcoin");
 
-        Holding holding = new Holding();
-        holding.setId(1L);
-        holding.setUser(user);
-        holding.setCoin(btc);
-        holding.setQuantity(new BigDecimal("0.50000000"));
-        holding.setAverageBuyPriceUsd(new BigDecimal("45000.00"));
-        holding.setCreatedAt(Instant.now());
-        holding.setUpdatedAt(Instant.now());
+        Transaction buyTransaction = new Transaction();
+        buyTransaction.setId(1L);
+        buyTransaction.setUser(user);
+        buyTransaction.setCoin(btc);
+        buyTransaction.setType(TransactionType.BUY);
+        buyTransaction.setQuantity(new BigDecimal("0.50000000"));
+        buyTransaction.setPriceUsd(new BigDecimal("45000.00"));
+        buyTransaction.setTotalValueUsd(new BigDecimal("22500.00"));
+        buyTransaction.setRealisedProfitUsd(new BigDecimal("0.00"));
+        buyTransaction.setCreatedAt(Instant.now());
 
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
-        when(holdingRepository.findByUser(user)).thenReturn(List.of(holding));
-        when(transactionRepository.findByUserOrderByCreatedAtDesc(user)).thenReturn(List.of());
+        when(transactionRepository.findByUserOrderByCreatedAtAsc(user)).thenReturn(List.of(buyTransaction));
         when(marketDataService.getCurrentPrice("BTC")).thenReturn(new BigDecimal("70834.00"));
 
-        PortfolioSummaryResponse response = portfolioService.getPortfolioSummary();
+        PortfolioSummaryResponse response = portfolioService.getCurrentUserPortfolioSummary();
 
         assertEquals(new BigDecimal("22500.00"), response.getTotalInvestedUsd());
         assertEquals(new BigDecimal("35417.00"), response.getTotalCurrentValueUsd());
@@ -116,17 +113,19 @@ class PortfolioServiceImplTest {
         btc.setSymbol("BTC");
         btc.setName("Bitcoin");
 
-        Holding holding = new Holding();
-        holding.setId(1L);
-        holding.setUser(user);
-        holding.setCoin(btc);
-        holding.setQuantity(new BigDecimal("0.80000000"));
-        holding.setAverageBuyPriceUsd(new BigDecimal("50000.00"));
-        holding.setCreatedAt(Instant.now());
-        holding.setUpdatedAt(Instant.now());
+        Transaction buyTransaction = new Transaction();
+        buyTransaction.setId(1L);
+        buyTransaction.setUser(user);
+        buyTransaction.setCoin(btc);
+        buyTransaction.setType(TransactionType.BUY);
+        buyTransaction.setQuantity(new BigDecimal("1.00000000"));
+        buyTransaction.setPriceUsd(new BigDecimal("50000.00"));
+        buyTransaction.setTotalValueUsd(new BigDecimal("50000.00"));
+        buyTransaction.setRealisedProfitUsd(new BigDecimal("0.00"));
+        buyTransaction.setCreatedAt(Instant.now().minusSeconds(10)); // Earlier
 
         Transaction sellTransaction = new Transaction();
-        sellTransaction.setId(1L);
+        sellTransaction.setId(2L);
         sellTransaction.setUser(user);
         sellTransaction.setCoin(btc);
         sellTransaction.setType(TransactionType.SELL);
@@ -134,14 +133,13 @@ class PortfolioServiceImplTest {
         sellTransaction.setPriceUsd(new BigDecimal("60000.00"));
         sellTransaction.setTotalValueUsd(new BigDecimal("12000.00"));
         sellTransaction.setRealisedProfitUsd(new BigDecimal("2000.00"));
-        sellTransaction.setCreatedAt(Instant.now());
+        sellTransaction.setCreatedAt(Instant.now()); // Later
 
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
-        when(holdingRepository.findByUser(user)).thenReturn(List.of(holding));
-        when(transactionRepository.findByUserOrderByCreatedAtDesc(user)).thenReturn(List.of(sellTransaction));
+        when(transactionRepository.findByUserOrderByCreatedAtAsc(user)).thenReturn(List.of(buyTransaction, sellTransaction));
         when(marketDataService.getCurrentPrice("BTC")).thenReturn(new BigDecimal("65000.00"));
 
-        PortfolioSummaryResponse response = portfolioService.getPortfolioSummary();
+        PortfolioSummaryResponse response = portfolioService.getCurrentUserPortfolioSummary();
 
         assertEquals(new BigDecimal("40000.00"), response.getTotalInvestedUsd());
         assertEquals(new BigDecimal("52000.00"), response.getTotalCurrentValueUsd());

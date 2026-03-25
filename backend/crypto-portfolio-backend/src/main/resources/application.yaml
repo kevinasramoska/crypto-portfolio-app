@@ -1,25 +1,24 @@
 # backend/src/main/resources/application.yaml
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/cryptodb
-    username: postgres
-    password: postgres
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/cryptodb}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
 server:
-  port: 8080
-
+  port: ${SERVER_PORT:8080}
 
 jwt:
-  secret: "change_this_to_a_long_random_secret"
-  expiration-seconds: 3600
+  secret: ${JWT_SECRET:change_this_in_real_env}
+  expiration-seconds: ${JWT_EXPIRATION_SECONDS:3600}
 
 crypto:
   api:
-    base-url: "https://api.coingecko.com/api/v3" # example
+    base-url: ${CRYPTO_API_BASE_URL:https://api.coingecko.com/api/v3}

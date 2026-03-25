@@ -7,5 +7,5 @@ import java.util.List;
 
 public interface PortfolioService {
     List<HoldingResponse> getUserHoldings();
-    PortfolioSummaryResponse getPortfolioSummary();
+    PortfolioSummaryResponse getCurrentUserPortfolioSummary();
 }
