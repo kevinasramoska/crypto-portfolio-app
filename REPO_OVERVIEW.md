@@ -318,7 +318,7 @@ Backend environment variables:
 | `SERVER_PORT` | `8080` | Backend server port |
 | `JWT_SECRET` | `change_this_in_real_env` | JWT signing secret |
 | `JWT_EXPIRATION_SECONDS` | `3600` | JWT lifetime |
-| `CRYPTO_API_BASE_URL` | `https://api.coingecko.com/api/v3` | Intended crypto API base URL |
+| `CRYPTO_API_BASE_URL` | `https://api.coingecko.com/api/v3` | Crypto market API base URL |
 
 Frontend environment variables:
 
@@ -336,7 +336,6 @@ Frontend environment variables:
 - Backend prices and portfolio values are USD-oriented.
 - `V2__transaction_constraints.sql` exists but appears empty.
 - Both `application.yaml` and `application.properties` define backend configuration, so developers should check Spring config precedence before changing runtime settings.
-- `CRYPTO_API_BASE_URL` exists in config, but `MarketDataServiceImpl` currently hardcodes CoinGecko.
 - Scheduler support is partially present, but scheduler classes are commented out.
 - Price refresh currently happens lazily through API calls and an in-memory cache.
 - No seed data is present.

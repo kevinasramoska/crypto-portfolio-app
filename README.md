@@ -244,7 +244,7 @@ npm run build
 | `SERVER_PORT` | `8080` | Backend server port |
 | `JWT_SECRET` | `change_this_in_real_env` | JWT signing secret |
 | `JWT_EXPIRATION_SECONDS` | `3600` | JWT lifetime |
-| `CRYPTO_API_BASE_URL` | `https://api.coingecko.com/api/v3` | Intended crypto API base URL |
+| `CRYPTO_API_BASE_URL` | `https://api.coingecko.com/api/v3` | Crypto market API base URL |
 
 ### Frontend
 
@@ -258,7 +258,6 @@ npm run build
 - The backend supports a fixed set of symbols for CoinGecko price lookup.
 - Portfolio performance snapshots are currently created after transaction writes, not on a schedule.
 - Scheduler classes exist but are commented out.
-- `CRYPTO_API_BASE_URL` exists in backend config, but the current market service still hardcodes the CoinGecko URL.
 - Both `application.yaml` and `application.properties` define overlapping backend configuration.
 - `V2__transaction_constraints.sql` exists but is currently empty.
 - The app is configured for local development, not production deployment.

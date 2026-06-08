@@ -284,7 +284,7 @@ Use this as a working backlog for the crypto portfolio tracker. Tasks are groupe
   - Priority: P1
   - Files likely involved: `application.yaml`, `application.properties`
 
-- [ ] Use configured CoinGecko base URL
+- [x] Use configured CoinGecko base URL
   - Description: Replace hardcoded CoinGecko URL in `MarketDataServiceImpl` with `crypto.api.base-url`.
   - Why it matters: Makes the existing config meaningful.
   - Complexity: Low

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { SUPPORTED_COIN_PRESETS } from "@/lib/supportedCoins";
 import { TransactionPayload, TransactionType } from "@/lib/types";
 
 type Props = {
@@ -8,23 +9,12 @@ type Props = {
   disabled?: boolean;
 };
 
-const POPULAR_NAMES: Record<string, string> = {
-  BTC: "Bitcoin",
-  ETH: "Ethereum",
-  SOL: "Solana",
-  LINK: "Chainlink",
-  DOGE: "Dogecoin",
-  ADA: "Cardano",
-  XRP: "XRP",
-  DOT: "Polkadot",
-  AVAX: "Avalanche",
-  MATIC: "Polygon",
-  LTC: "Litecoin",
-  BNB: "BNB",
-};
+const CUSTOM_COIN_VALUE = "CUSTOM";
+const SYMBOL_PATTERN = /^[A-Z0-9]{2,10}$/;
 
 export default function AddTransactionForm({ onSubmit, disabled }: Props) {
   const [type, setType] = useState<TransactionType>("BUY");
+  const [selectedCoin, setSelectedCoin] = useState(CUSTOM_COIN_VALUE);
   const [symbol, setSymbol] = useState("");
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -34,18 +24,37 @@ export default function AddTransactionForm({ onSubmit, disabled }: Props) {
 
   function resetForm() {
     setType("BUY");
+    setSelectedCoin(CUSTOM_COIN_VALUE);
     setSymbol("");
     setName("");
     setQuantity("");
     setPriceUsd("");
   }
 
-  function handleSymbolChange(value: string) {
-    const normalized = value.toUpperCase();
-    setSymbol(normalized);
-    if (!name.trim() || POPULAR_NAMES[symbol]) {
-      setName(POPULAR_NAMES[normalized] ?? "");
+  function handleCoinSelect(value: string) {
+    setSelectedCoin(value);
+
+    if (value === CUSTOM_COIN_VALUE) {
+      setSymbol("");
+      setName("");
+      return;
     }
+
+    const preset = SUPPORTED_COIN_PRESETS.find(coin => coin.symbol === value);
+    if (preset) {
+      setSymbol(preset.symbol);
+      setName(preset.name);
+    }
+  }
+
+  function handleSymbolChange(value: string) {
+    setSelectedCoin(CUSTOM_COIN_VALUE);
+    setSymbol(value.toUpperCase());
+  }
+
+  function handleNameChange(value: string) {
+    setSelectedCoin(CUSTOM_COIN_VALUE);
+    setName(value);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -58,6 +67,10 @@ export default function AddTransactionForm({ onSubmit, disabled }: Props) {
 
     if (!normalizedSymbol) {
       setError("Symbol is required.");
+      return;
+    }
+    if (!SYMBOL_PATTERN.test(normalizedSymbol)) {
+      setError("Symbol must use 2-10 letters or numbers.");
       return;
     }
     if (!trimmedName) {
@@ -113,6 +126,23 @@ export default function AddTransactionForm({ onSubmit, disabled }: Props) {
         </label>
 
         <label className="flex flex-col gap-2">
+          <span className="text-sm text-gray-400">Coin</span>
+          <select
+            className="rounded-lg border border-gray-800 bg-gray-950/60 px-4 py-3 text-white focus:border-purple-500 focus:outline-none"
+            value={selectedCoin}
+            onChange={event => handleCoinSelect(event.target.value)}
+            disabled={disabled || loading}
+          >
+            <option value={CUSTOM_COIN_VALUE}>Custom / manual entry</option>
+            {SUPPORTED_COIN_PRESETS.map(coin => (
+              <option key={coin.symbol} value={coin.symbol}>
+                {coin.symbol} - {coin.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-2">
           <span className="text-sm text-gray-400">Symbol</span>
           <input
             className="rounded-lg border border-gray-800 bg-gray-950/60 px-4 py-3 text-white placeholder:text-gray-600 focus:border-purple-500 focus:outline-none"
@@ -130,7 +160,7 @@ export default function AddTransactionForm({ onSubmit, disabled }: Props) {
             className="rounded-lg border border-gray-800 bg-gray-950/60 px-4 py-3 text-white placeholder:text-gray-600 focus:border-purple-500 focus:outline-none"
             placeholder="Bitcoin"
             value={name}
-            onChange={event => setName(event.target.value)}
+            onChange={event => handleNameChange(event.target.value)}
             disabled={disabled || loading}
             autoComplete="off"
           />

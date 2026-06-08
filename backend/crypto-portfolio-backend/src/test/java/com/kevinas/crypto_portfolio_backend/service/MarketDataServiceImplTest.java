@@ -9,11 +9,15 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 class MarketDataServiceImplTest {
+
+    private static final String API_BASE_URL = "https://api.coingecko.com/api/v3";
 
     private RestTemplate restTemplate;
     private MarketDataServiceImpl marketDataService;
@@ -21,7 +25,7 @@ class MarketDataServiceImplTest {
     @BeforeEach
     void setUp() {
         restTemplate = mock(RestTemplate.class);
-        marketDataService = new MarketDataServiceImpl(restTemplate);
+        marketDataService = new MarketDataServiceImpl(restTemplate, API_BASE_URL);
     }
 
     // 1. Original behaviour (still required)
@@ -85,5 +89,51 @@ class MarketDataServiceImplTest {
 
         assertEquals(new BigDecimal("60000"), first.get("BTC"));
         assertEquals(new BigDecimal("60000"), second.get("BTC")); // fallback worked
+    }
+
+    @Test
+    void getCurrentPrices_shouldUseConfiguredBaseUrl() {
+        RestTemplate customRestTemplate = mock(RestTemplate.class);
+        MarketDataServiceImpl customMarketDataService = new MarketDataServiceImpl(
+                customRestTemplate,
+                "https://prices.example.test/v9"
+        );
+
+        when(customRestTemplate.getForObject(anyString(), eq(Map.class)))
+                .thenReturn(Map.of("bitcoin", Map.of("usd", 60000)));
+
+        customMarketDataService.getCurrentPrices(List.of("BTC"));
+
+        verify(customRestTemplate).getForObject(
+                argThat(url ->
+                        url.startsWith("https://prices.example.test/v9/simple/price")
+                                && url.contains("ids=bitcoin")
+                                && url.contains("vs_currencies=usd")
+                ),
+                eq(Map.class)
+        );
+    }
+
+    @Test
+    void getCurrentPrices_shouldHandleConfiguredBaseUrlWithTrailingSlash() {
+        RestTemplate customRestTemplate = mock(RestTemplate.class);
+        MarketDataServiceImpl customMarketDataService = new MarketDataServiceImpl(
+                customRestTemplate,
+                "https://prices.example.test/v9/"
+        );
+
+        when(customRestTemplate.getForObject(anyString(), eq(Map.class)))
+                .thenReturn(Map.of("bitcoin", Map.of("usd", 60000)));
+
+        customMarketDataService.getCurrentPrices(List.of("BTC"));
+
+        verify(customRestTemplate).getForObject(
+                argThat(url -> {
+                    assertTrue(url.startsWith("https://prices.example.test/v9/simple/price"));
+                    assertFalse(url.contains("v9//simple/price"));
+                    return true;
+                }),
+                eq(Map.class)
+        );
     }
 }

@@ -1,7 +1,7 @@
 package com.kevinas.crypto_portfolio_backend.service;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -15,11 +15,11 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class MarketDataServiceImpl implements MarketDataService {
 
     private final RestTemplate restTemplate;
+    private final String cryptoApiBaseUrl;
 
     private static final Duration CACHE_TTL = Duration.ofSeconds(60);
 
@@ -39,6 +39,14 @@ public class MarketDataServiceImpl implements MarketDataService {
             Map.entry("LTC", "litecoin"),
             Map.entry("BNB", "binancecoin")
     );
+
+    public MarketDataServiceImpl(
+            RestTemplate restTemplate,
+            @Value("${crypto.api.base-url}") String cryptoApiBaseUrl
+    ) {
+        this.restTemplate = restTemplate;
+        this.cryptoApiBaseUrl = normalizeBaseUrl(cryptoApiBaseUrl);
+    }
 
     @Override
     public BigDecimal getCurrentPrice(String symbol) {
@@ -98,7 +106,7 @@ public class MarketDataServiceImpl implements MarketDataService {
             Instant now
     ) {
         String ids = String.join(",", symbolToIdToRefresh.values());
-        String url = "https://api.coingecko.com/api/v3/simple/price?ids=" + ids + "&vs_currencies=usd";
+        String url = cryptoApiBaseUrl + "/simple/price?ids=" + ids + "&vs_currencies=usd";
 
         try {
             Map<String, Map<String, Object>> response = restTemplate.getForObject(url, Map.class);
@@ -149,6 +157,14 @@ public class MarketDataServiceImpl implements MarketDataService {
     private boolean isFresh(CachedPrice cachedPrice, Instant now) {
         return cachedPrice != null
                 && cachedPrice.fetchedAt().plus(CACHE_TTL).isAfter(now);
+    }
+
+    private String normalizeBaseUrl(String baseUrl) {
+        if (baseUrl == null) {
+            return "";
+        }
+
+        return baseUrl.replaceAll("/+$", "");
     }
 
     private record CachedPrice(BigDecimal price, Instant fetchedAt) {
