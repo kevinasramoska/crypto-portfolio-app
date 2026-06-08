@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.Instant;
 
 @Entity
 @Table(name = "portfolio_snapshots")
@@ -19,18 +19,26 @@ public class PortfolioSnapshot {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
-    @Column(name = "snapshot_date", nullable = false)
-    private LocalDate snapshotDate;
+    @Column(nullable = false, updatable = false)
+    private Instant snapshotAt;
 
-    @Column(name = "total_value_usd", nullable = false, precision = 19, scale = 2)
-    private BigDecimal totalValueUsd;
-
-    @Column(name = "total_invested_usd", nullable = false, precision = 19, scale = 2)
+    @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal totalInvestedUsd;
 
-    @Column(name = "unrealized_pnl_usd", nullable = false, precision = 19, scale = 2)
-    private BigDecimal unrealizedPnlUsd;
+    @Column(nullable = false, precision = 19, scale = 2)
+    private BigDecimal totalCurrentValueUsd;
+
+    @Column(nullable = false, precision = 19, scale = 2)
+    private BigDecimal totalProfitLossUsd;
+
+    @PrePersist
+    public void prePersist() {
+        if (this.snapshotAt == null) {
+            this.snapshotAt = Instant.now();
+        }
+    }
 }
