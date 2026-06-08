@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AddTransactionForm from "@/components/AddTransactionForm";
+import AssetAllocationSummary from "@/components/AssetAllocationSummary";
 import CryptoCard from "@/components/CryptoCard";
 import HoldingsControls, { type SortKey } from "@/components/HoldingsControls";
 import PerformanceHistory from "@/components/PerformanceHistory";
@@ -48,6 +49,7 @@ export default function DashboardPage() {
 
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [portfolioSummary, setPortfolioSummary] = useState<PortfolioSummary | null>(null);
+  const [lastPortfolioUpdated, setLastPortfolioUpdated] = useState<Date | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [transactionSummary, setTransactionSummary] = useState<TransactionSummary | null>(null);
   const [performanceHistory, setPerformanceHistory] = useState<PortfolioPerformanceHistory | null>(null);
@@ -91,6 +93,7 @@ export default function DashboardPage() {
 
   const hasWatchlist = watchlist.length > 0;
   const formattedLastPriceUpdate = lastPriceUpdated?.toLocaleTimeString() ?? null;
+  const formattedLastPortfolioUpdate = lastPortfolioUpdated?.toLocaleTimeString() ?? null;
   const isFiltering = symbolFilter.trim().length > 0;
   const dashboardLoading = portfolioDataLoading || transactionLoading || performanceLoading;
   const emptyMessage =
@@ -133,6 +136,7 @@ export default function DashboardPage() {
 
       setHoldings(holdingsData);
       setPortfolioSummary(summaryData);
+      setLastPortfolioUpdated(new Date());
       setPortfolioRequiresAuth(false);
     } catch (error) {
       console.error("Error loading portfolio data", error);
@@ -144,6 +148,7 @@ export default function DashboardPage() {
       }
       setHoldings([]);
       setPortfolioSummary(null);
+      setLastPortfolioUpdated(null);
     } finally {
       setPortfolioDataLoading(false);
     }
@@ -326,13 +331,18 @@ export default function DashboardPage() {
             <h2 className="text-2xl font-semibold">Portfolio summary</h2>
             <p className="text-sm text-gray-500">Totals, holdings, realised P/L, and unrealised P/L from the backend.</p>
           </div>
-          <button
-            onClick={refreshDashboard}
-            className="self-start text-sm text-purple-300 transition hover:text-white disabled:opacity-50 sm:self-auto"
-            disabled={dashboardLoading}
-          >
-            Refresh portfolio
-          </button>
+          <div className="flex flex-col items-start gap-2 sm:items-end">
+            {formattedLastPortfolioUpdate && (
+              <span className="text-xs text-gray-500">Portfolio updated: {formattedLastPortfolioUpdate}</span>
+            )}
+            <button
+              onClick={refreshDashboard}
+              className="text-sm text-purple-300 transition hover:text-white disabled:opacity-50"
+              disabled={dashboardLoading}
+            >
+              Refresh portfolio
+            </button>
+          </div>
         </div>
 
         {portfolioDataError && (
@@ -346,6 +356,14 @@ export default function DashboardPage() {
 
       {!portfolioRequiresAuth && (
         <>
+          <section className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-semibold">Asset allocation</h2>
+              <p className="text-sm text-gray-500">Share of known portfolio value by open holding.</p>
+            </div>
+            <AssetAllocationSummary holdings={holdings} loading={portfolioDataLoading} error={portfolioDataError} />
+          </section>
+
           <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
             <div className="space-y-6">
               <div>
