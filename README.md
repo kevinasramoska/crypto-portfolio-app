@@ -1,149 +1,192 @@
 # Crypto Portfolio Tracker
 
-A production-style backend system for tracking cryptocurrency portfolios, including holdings, live valuations, and profit/loss calculations.
+A full-stack crypto portfolio tracker for recording buy/sell transactions, viewing current holdings, tracking portfolio value, and calculating realised/unrealised profit and loss.
 
-Built with Java 21, Spring Boot, PostgreSQL, JWT authentication, Docker, and external market data integration.
+The app is transaction-driven: users record `BUY` and `SELL` transactions, and the backend updates holdings, calculates summaries, stores transaction history, and creates portfolio snapshots.
 
----
+## Tech Stack
 
-## Overview
-
-This application enables users to:
-
-* securely register and authenticate
-* manage crypto holdings across multiple assets
-* track portfolio value and performance in real time
-* calculate profit/loss based on market data
-
-The project focuses on **real-world backend design**, including stateless authentication, database migrations, and clean service architecture.
-
----
-
-## Architecture
-
-```
-Controller → Service → Repository → Database
-             ↓
-        Security (JWT Filter)
-             ↓
-     External API (CoinGecko)
-```
-
-### Design Principles
-
-* **Stateless authentication** (JWT)
-* **Layered architecture** for separation of concerns
-* **Database versioning** via Flyway
-* **Containerized environment** using Docker
-* **External API integration** for live pricing
-
----
+| Layer | Technology |
+|---|---|
+| Backend | Java 21, Spring Boot 3.5 |
+| API | Spring MVC REST controllers |
+| Security | Spring Security, JWT, BCrypt |
+| Database | PostgreSQL |
+| ORM | Spring Data JPA, Hibernate |
+| Migrations | Flyway |
+| Market data | CoinGecko |
+| Backend tests | JUnit 5, Spring Boot Test, MockMvc, Mockito, H2 |
+| Frontend | Next.js 14, React 18, TypeScript |
+| Styling | Tailwind CSS |
+| Local infrastructure | Docker Compose, PostgreSQL, pgAdmin |
 
 ## Features
 
 ### Authentication
 
-* User registration and login
-* BCrypt password hashing
-* JWT-based stateless security
+- Register and log in with email/password
+- Password hashing with BCrypt
+- JWT-based stateless authentication
+- Protected portfolio and transaction endpoints
 
-### Portfolio Management
+### Portfolio Tracking
 
-* Create, update, and delete holdings
-* Per-user data isolation
-* Average buy price tracking
+- Record crypto `BUY` and `SELL` transactions
+- Prevent selling more than the current holding quantity
+- Maintain current holdings per user
+- Calculate average buy price
+- Calculate current value, invested value, and profit/loss
 
-### Market Integration
+### Dashboard
 
-* Live price lookup via CoinGecko API
+- Watchlist price cards
+- Portfolio summary cards
+- Holdings table
+- Transaction creation form
+- Transaction summary cards
+- Transaction history table
+- Portfolio performance history by `7d`, `30d`, or `90d`
 
-### Portfolio Analytics
+### Market Data
 
-* Total invested value
-* Current portfolio value
-* Profit / loss calculation
+- Public price lookup endpoint
+- CoinGecko integration for supported symbols
+- In-memory price cache with a 60-second TTL
 
-### Infrastructure
+## Project Structure
 
-* PostgreSQL persistence
-* Docker-based local environment
-* Swagger/OpenAPI documentation
-* Global exception handling and validation
+```text
+.
+├── backend/
+│   └── crypto-portfolio-backend/
+│       ├── pom.xml
+│       ├── docker-compose.yml
+│       └── src/
+│           ├── main/java/com/kevinas/crypto_portfolio_backend/
+│           │   ├── controller/
+│           │   ├── dto/
+│           │   ├── exception/
+│           │   ├── model/
+│           │   ├── repository/
+│           │   ├── security/
+│           │   └── service/
+│           ├── main/resources/db/migration/
+│           └── test/
+├── frontend/
+│   └── frontend/
+│       ├── package.json
+│       └── src/
+│           ├── app/
+│           ├── components/
+│           └── lib/
+├── REPO_OVERVIEW.md
+└── tasklist.MD
+```
 
----
-
-## Tech Stack
-
-| Layer          | Technology             |
-| -------------- | ---------------------- |
-| Backend        | Java 21, Spring Boot 3 |
-| Security       | Spring Security + JWT  |
-| Database       | PostgreSQL             |
-| ORM            | Hibernate / JPA        |
-| Migrations     | Flyway                 |
-| Infrastructure | Docker, Docker Compose |
-| API Docs       | Swagger / OpenAPI      |
-| External Data  | CoinGecko API          |
-
----
-
-## Running the Project
+## Local Setup
 
 ### 1. Start PostgreSQL
 
 ```bash
+cd backend/crypto-portfolio-backend
 docker compose up -d
 ```
 
-### 2. Run the backend
+This starts:
+
+| Service | URL/Port |
+|---|---|
+| PostgreSQL | `localhost:5432` |
+| pgAdmin | `http://localhost:5050` |
+
+Default database credentials from `docker-compose.yml`:
+
+| Setting | Value |
+|---|---|
+| Database | `cryptodb` |
+| Username | `postgres` |
+| Password | `postgres` |
+
+### 2. Run The Backend
 
 ```bash
+cd backend/crypto-portfolio-backend
 ./mvnw spring-boot:run
 ```
 
----
+Backend default URL:
 
-## Configuration
-
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/cryptodb
-spring.datasource.username=postgres
-spring.datasource.password=postgres
-
-spring.jpa.hibernate.ddl-auto=validate
-
-spring.flyway.enabled=true
-spring.flyway.locations=classpath:db/migration
+```text
+http://localhost:8080
 ```
 
----
+### 3. Configure The Frontend
+
+```bash
+cd frontend/frontend
+cp .env.example .env.local
+npm install
+```
+
+Default frontend API config:
+
+```text
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8080/api
+```
+
+### 4. Run The Frontend
+
+```bash
+cd frontend/frontend
+npm run dev
+```
+
+Frontend default URL:
+
+```text
+http://localhost:3000
+```
 
 ## API Endpoints
 
-### Auth (Public)
+### Public
 
-* `POST /api/auth/register`
-* `POST /api/auth/login`
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `POST` | `/api/auth/register` | Register a user |
+| `POST` | `/api/auth/login` | Log in and receive a JWT |
+| `GET` | `/api/market/prices?symbols=BTC,ETH` | Get current prices for supported symbols |
 
----
+### Protected
 
-### Portfolio (Protected)
+Protected endpoints require:
 
-* `GET /api/portfolio/holdings`
-* `POST /api/portfolio/holdings`
-* `PUT /api/portfolio/holdings/{id}`
-* `DELETE /api/portfolio/holdings/{id}`
-* `GET /api/portfolio/summary`
+```text
+Authorization: Bearer <token>
+```
 
----
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/api/portfolio/holdings` | Get current user holdings |
+| `GET` | `/api/portfolio/summary` | Get portfolio totals and per-asset summary |
+| `GET` | `/api/portfolio/performance/history?range=7d` | Get historical portfolio snapshots |
+| `POST` | `/api/transactions` | Create a BUY or SELL transaction |
+| `GET` | `/api/transactions` | Get current user transaction history |
+| `GET` | `/api/transactions/summary` | Get buy/sell/realised profit totals |
 
-### Market (Public)
+### Example Transaction Request
 
-* `GET /api/market/prices`
+```json
+{
+  "symbol": "BTC",
+  "name": "Bitcoin",
+  "type": "BUY",
+  "quantity": 0.5,
+  "priceUsd": 45000
+}
+```
 
----
-
-## Example Response
+### Example Holding Response
 
 ```json
 {
@@ -159,54 +202,63 @@ spring.flyway.locations=classpath:db/migration
 }
 ```
 
----
+## Build And Test
 
-## Database Schema
+### Backend Tests
 
-Core tables:
-
-* users
-* user_roles
-* coins
-* holdings
-* transactions
-
-Managed via Flyway migrations:
-
-```
-src/main/resources/db/migration
+```bash
+cd backend/crypto-portfolio-backend
+./mvnw test
 ```
 
----
+### Backend Build
 
-## Key Engineering Decisions
+```bash
+cd backend/crypto-portfolio-backend
+./mvnw package
+```
 
-| Decision                                   | Reason                               |
-| ------------------------------------------ | ------------------------------------ |
-| JWT authentication                         | scalable, stateless API design       |
-| Flyway migrations                          | safe and controlled schema evolution |
-| Hibernate validation (`ddl-auto=validate`) | prevents silent schema drift         |
-| Dockerized database                        | consistent local development         |
-| Layered architecture                       | maintainability and testability      |
+### Frontend Lint
 
----
+```bash
+cd frontend/frontend
+npm run lint
+```
 
-## Future Improvements
+### Frontend Build
 
-* Portfolio aggregation endpoint optimization
-* Integration testing (Testcontainers)
-* Redis caching for price data
-* Pagination and filtering
-* Rate limiting and API hardening
+```bash
+cd frontend/frontend
+npm run build
+```
 
----
+## Environment Variables
 
-## Author
+### Backend
 
-Kevinas Ramoska
+| Variable | Default | Purpose |
+|---|---|---|
+| `DB_URL` | `jdbc:postgresql://localhost:5432/cryptodb` | JDBC database URL |
+| `DB_USERNAME` | `postgres` | Database username |
+| `DB_PASSWORD` | `postgres` | Database password |
+| `SERVER_PORT` | `8080` | Backend server port |
+| `JWT_SECRET` | `change_this_in_real_env` | JWT signing secret |
+| `JWT_EXPIRATION_SECONDS` | `3600` | JWT lifetime |
+| `CRYPTO_API_BASE_URL` | `https://api.coingecko.com/api/v3` | Intended crypto API base URL |
 
----
+### Frontend
 
-## Status
+| Variable | Default | Purpose |
+|---|---|---|
+| `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:8080/api` | Backend API base URL used by the browser |
 
-Backend core complete. Actively expanding features and improving production readiness.
+## Known Limitations
+
+- The frontend currently has lint/build checks but no dedicated test suite.
+- The backend supports a fixed set of symbols for CoinGecko price lookup.
+- Portfolio performance snapshots are currently created after transaction writes, not on a schedule.
+- Scheduler classes exist but are commented out.
+- `CRYPTO_API_BASE_URL` exists in backend config, but the current market service still hardcodes the CoinGecko URL.
+- Both `application.yaml` and `application.properties` define overlapping backend configuration.
+- `V2__transaction_constraints.sql` exists but is currently empty.
+- The app is configured for local development, not production deployment.

@@ -1,13 +1,65 @@
 import { authHeader } from "./auth";
-import { Holding, LoginResponse, PriceMap } from "./types";
+import {
+  Holding,
+  LoginResponse,
+  PerformanceRange,
+  PortfolioPerformanceHistory,
+  PortfolioSummary,
+  PriceMap,
+  Transaction,
+  TransactionPayload,
+  TransactionSummary,
+} from "./types";
 
-const API_BASE = "http://localhost:8080/api";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api";
 
 async function parseJson<T>(res: Response, errorMessage: string): Promise<T> {
   if (!res.ok) {
     throw new Error(errorMessage);
   }
   return res.json();
+}
+
+async function parseOptionalJson<T>(res: Response, errorMessage: string): Promise<T> {
+  if (!res.ok) {
+    let detail = errorMessage;
+    try {
+      const body = await res.json();
+      if (typeof body?.error === "string") {
+        detail = body.error;
+      }
+    } catch {
+      // keep fallback message
+    }
+    throw new Error(detail);
+  }
+  return res.json();
+}
+
+async function authorizedFetch(path: string, init?: RequestInit) {
+  const headers = new Headers(init?.headers);
+  headers.set("Content-Type", "application/json");
+
+  const authorization = authHeader().Authorization;
+  if (authorization) {
+    headers.set("Authorization", authorization);
+  }
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers,
+  });
+
+  if (res.status === 401 || res.status === 403) {
+    throw new Error("Authentication required");
+  }
+
+  return res;
+}
+
+function toNumber(value: number | string | null | undefined) {
+  const parsed = typeof value === "string" ? Number(value) : value;
+  return typeof parsed === "number" && Number.isFinite(parsed) ? parsed : 0;
 }
 
 export async function getPrices(symbols: string[]): Promise<PriceMap> {
@@ -38,86 +90,50 @@ export async function register(email: string, password: string): Promise<LoginRe
 type HoldingApiResponse = Omit<Holding, "quantity"> & { quantity: number | string };
 
 export async function getHoldings(): Promise<Holding[]> {
-  const res = await fetch(`${API_BASE}/portfolio/holdings`, {
-    headers: {
-      ...authHeader(),
-      "Content-Type": "application/json",
-    },
-  });
-
-  if (res.status === 401) {
-    throw new Error("Authentication required");
-  }
+  const res = await authorizedFetch("/portfolio/holdings");
 
   const data = await parseJson<HoldingApiResponse[]>(res, "Failed to fetch holdings");
 
   return data.map(holding => {
-    const rawQuantity = typeof holding.quantity === "string" ? Number(holding.quantity) : holding.quantity;
     return {
       ...holding,
-      quantity: Number.isFinite(rawQuantity) ? rawQuantity : 0,
+      quantity: toNumber(holding.quantity),
+      averageBuyPriceUsd: toNumber(holding.averageBuyPriceUsd),
+      currentPriceUsd: toNumber(holding.currentPriceUsd),
+      investedValueUsd: toNumber(holding.investedValueUsd),
+      currentValueUsd: toNumber(holding.currentValueUsd),
+      profitLossUsd: toNumber(holding.profitLossUsd),
     };
   });
 }
 
-type HoldingPayload = {
-  symbol: string;
-  quantity: number;
-};
-
-function holdingsEndpoint(path = "") {
-  return `${API_BASE}/portfolio/holdings${path}`;
+export async function getPortfolioSummary(): Promise<PortfolioSummary> {
+  const res = await authorizedFetch("/portfolio/summary");
+  return parseJson(res, "Failed to fetch portfolio summary");
 }
 
-async function authorizedRequest(path: string, init?: RequestInit) {
-  const res = await fetch(holdingsEndpoint(path), {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeader(),
-      ...init?.headers,
-    },
-  });
-
-  if (res.status === 401) {
-    throw new Error("Authentication required");
-  }
-
-  return res;
+export async function getPortfolioPerformanceHistory(
+  range: PerformanceRange
+): Promise<PortfolioPerformanceHistory> {
+  const res = await authorizedFetch(`/portfolio/performance/history?range=${range}`);
+  return parseJson(res, "Failed to fetch portfolio performance history");
 }
 
-export async function createHolding(payload: HoldingPayload): Promise<Holding> {
-  const res = await authorizedRequest("", {
+export async function getTransactions(): Promise<Transaction[]> {
+  const res = await authorizedFetch("/transactions");
+  return parseJson(res, "Failed to fetch transactions");
+}
+
+export async function getTransactionSummary(): Promise<TransactionSummary> {
+  const res = await authorizedFetch("/transactions/summary");
+  return parseJson(res, "Failed to fetch transaction summary");
+}
+
+export async function createTransaction(payload: TransactionPayload): Promise<Transaction> {
+  const res = await authorizedFetch("/transactions", {
     method: "POST",
     body: JSON.stringify(payload),
   });
 
-  const data = await parseJson<HoldingApiResponse>(res, "Failed to create holding");
-  return {
-    ...data,
-    quantity: typeof data.quantity === "string" ? Number(data.quantity) : data.quantity,
-  };
-}
-
-export async function updateHolding(id: number, payload: HoldingPayload): Promise<Holding> {
-  const res = await authorizedRequest(`/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(payload),
-  });
-
-  const data = await parseJson<HoldingApiResponse>(res, "Failed to update holding");
-  return {
-    ...data,
-    quantity: typeof data.quantity === "string" ? Number(data.quantity) : data.quantity,
-  };
-}
-
-export async function deleteHolding(id: number): Promise<void> {
-  const res = await authorizedRequest(`/${id}`, {
-    method: "DELETE",
-  });
-
-  if (!res.ok && res.status !== 204) {
-    throw new Error("Failed to delete holding");
-  }
+  return parseOptionalJson(res, "Failed to create transaction");
 }

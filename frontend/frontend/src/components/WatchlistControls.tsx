@@ -123,12 +123,16 @@ export default function WatchlistControls({ watchlist, onAdd, onRemove, disabled
       {watchlist.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {watchlist.map(symbol => (
-            <span
+            <button
               key={symbol}
-              className="rounded-full border border-gray-800 bg-gray-900/40 px-3 py-1 text-xs font-semibold text-gray-200"
+              type="button"
+              onClick={() => onRemove(symbol)}
+              disabled={disabled}
+              className="rounded-full border border-gray-800 bg-gray-900/40 px-3 py-1 text-xs font-semibold text-gray-200 transition hover:border-red-500 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label={`Remove ${symbol} from watchlist`}
             >
               {symbol}
-            </span>
+            </button>
           ))}
         </div>
       )}

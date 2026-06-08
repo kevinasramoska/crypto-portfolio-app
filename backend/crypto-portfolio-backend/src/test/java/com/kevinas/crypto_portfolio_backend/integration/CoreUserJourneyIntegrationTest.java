@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kevinas.crypto_portfolio_backend.repository.CoinRepository;
 import com.kevinas.crypto_portfolio_backend.repository.HoldingRepository;
+import com.kevinas.crypto_portfolio_backend.repository.PortfolioSnapshotRepository;
 import com.kevinas.crypto_portfolio_backend.repository.TransactionRepository;
 import com.kevinas.crypto_portfolio_backend.repository.UserRepository;
 import com.kevinas.crypto_portfolio_backend.service.MarketDataService;
@@ -21,7 +22,6 @@ import java.math.BigDecimal;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -44,6 +44,9 @@ class CoreUserJourneyIntegrationTest {
     private HoldingRepository holdingRepository;
 
     @Autowired
+    private PortfolioSnapshotRepository portfolioSnapshotRepository;
+
+    @Autowired
     private CoinRepository coinRepository;
 
     @Autowired
@@ -54,6 +57,7 @@ class CoreUserJourneyIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        portfolioSnapshotRepository.deleteAll();
         transactionRepository.deleteAll();
         holdingRepository.deleteAll();
         coinRepository.deleteAll();

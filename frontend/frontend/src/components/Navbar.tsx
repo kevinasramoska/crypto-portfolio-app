@@ -15,11 +15,13 @@ export default function Navbar({ showAuthLinks = true }: Props) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!getToken()) {
-      setProfile(null);
-      return;
-    }
-    setProfile(getActiveProfile());
+    queueMicrotask(() => {
+      if (!getToken()) {
+        setProfile(null);
+        return;
+      }
+      setProfile(getActiveProfile());
+    });
   }, [pathname]);
 
   function handleLogout() {
