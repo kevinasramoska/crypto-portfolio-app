@@ -28,6 +28,7 @@ The app is transaction-driven: users record `BUY` and `SELL` transactions, and t
 - Password hashing with BCrypt
 - JWT-based stateless authentication
 - Protected portfolio and transaction endpoints
+- Stale frontend auth state is cleared when protected API calls return `401` or `403`
 
 ### Portfolio Tracking
 
@@ -36,22 +37,33 @@ The app is transaction-driven: users record `BUY` and `SELL` transactions, and t
 - Maintain current holdings per user
 - Calculate average buy price
 - Calculate current value, invested value, and profit/loss
+- Flag holdings whose symbols do not have supported market data
 
 ### Dashboard
 
 - Watchlist price cards
 - Portfolio summary cards
 - Holdings table
-- Transaction creation form
+- Transaction creation form with supported coin presets and custom/manual fallback
 - Transaction summary cards
 - Transaction history table
 - Portfolio performance history by `7d`, `30d`, or `90d`
+- Independent loading and error states for portfolio, transactions, and performance history
+- Clear empty states for first-run accounts and missing snapshot history
+- Clear unsupported/no-market-data states instead of misleading zero-value display
 
 ### Market Data
 
 - Public price lookup endpoint
 - CoinGecko integration for supported symbols
 - In-memory price cache with a 60-second TTL
+- Configurable CoinGecko-compatible base URL through `CRYPTO_API_BASE_URL`
+
+Supported market symbols are currently:
+
+```text
+BTC, ETH, SOL, ADA, XRP, DOGE, DOT, AVAX, MATIC, LINK, LTC, BNB
+```
 
 ## Project Structure
 
@@ -198,7 +210,20 @@ Authorization: Bearer <token>
   "currentPriceUsd": 60000.00,
   "investedValueUsd": 22500.00,
   "currentValueUsd": 30000.00,
-  "profitLossUsd": 7500.00
+  "profitLossUsd": 7500.00,
+  "marketPriceAvailable": true
+}
+```
+
+If a holding has no supported market data, `marketPriceAvailable` is `false`. The numeric market-value fields remain present for compatibility, but the frontend treats them as unavailable rather than a real zero valuation.
+
+### Example Portfolio Summary Additions
+
+```json
+{
+  "totalCurrentValueUsd": 30000.00,
+  "totalProfitLossUsd": 7500.00,
+  "hasUnsupportedMarketData": false
 }
 ```
 
@@ -258,6 +283,8 @@ npm run build
 - The backend supports a fixed set of symbols for CoinGecko price lookup.
 - Portfolio performance snapshots are currently created after transaction writes, not on a schedule.
 - Scheduler classes exist but are commented out.
+- CORS is currently configured for the local frontend origin `http://localhost:3000`.
+- The repository may exist in multiple local folders. The implemented changes described here are in `/Users/kevinasramoska/Desktop/crypto-portfolio-app`.
 - Both `application.yaml` and `application.properties` define overlapping backend configuration.
 - `V2__transaction_constraints.sql` exists but is currently empty.
 - The app is configured for local development, not production deployment.

@@ -10,8 +10,8 @@ Use this as a working backlog for the crypto portfolio tracker. Tasks are groupe
   - Complexity: Low
   - Risk: Medium
   - Priority: P0
-  - Status: Reviewed; package-lock noise was removed. Remaining action is to review and commit the intended changes.
-  - Files likely involved: `frontend/frontend/src/**`, `REPO_OVERVIEW.md`, `frontend/frontend/package-lock.json`
+  - Status: Current implementation and docs are ready for review. Remaining action is to commit from `/Users/kevinasramoska/Desktop/crypto-portfolio-app` or port changes to the other local checkout.
+  - Files likely involved: `backend/crypto-portfolio-backend/src/**`, `frontend/frontend/src/**`, `README.md`, `REPO_OVERVIEW.md`, `tasklist.MD`
 
 - [x] Run full verification
   - Description: Run backend tests, frontend lint, and frontend build.
@@ -58,52 +58,58 @@ Use this as a working backlog for the crypto portfolio tracker. Tasks are groupe
 
 ## Should Improve
 
-- [ ] Improve transaction form coin selection
+- [x] Improve transaction form coin selection
   - Description: Replace free-form symbol/name entry with supported symbol presets and an editable fallback.
   - Why it matters: Reduces invalid coin data and unsupported price lookups.
   - Complexity: Medium
   - Risk: Low
   - Priority: P1
-  - Files likely involved: `AddTransactionForm.tsx`, `MarketDataServiceImpl.java`, `types.ts`
+  - Status: Implemented with reusable frontend supported coin presets and manual fallback.
+  - Files likely involved: `AddTransactionForm.tsx`, `supportedCoins.ts`, `types.ts`
 
-- [ ] Show unsupported price states clearly
+- [x] Show unsupported price states clearly
   - Description: Display a clear “unsupported/no market data” state when a price cannot be fetched.
   - Why it matters: Prevents misleading zero-value portfolio data.
   - Complexity: Medium
   - Risk: Medium
   - Priority: P1
+  - Status: Implemented with `marketPriceAvailable` and `hasUnsupportedMarketData` response flags plus frontend no-market-data display.
   - Files likely involved: `PriceTable.tsx`, `CryptoCard.tsx`, `PortfolioSummaryCards.tsx`, `PortfolioServiceImpl.java`
 
-- [ ] Improve expired/invalid auth handling
+- [x] Improve expired/invalid auth handling
   - Description: Clear stale tokens/profiles and redirect or prompt login when authenticated requests fail.
   - Why it matters: Prevents confusing dashboard states after JWT expiration.
   - Complexity: Medium
   - Risk: Medium
   - Priority: P1
+  - Status: Implemented in `authorizedFetch` by clearing stale auth session on `401`/`403`.
   - Files likely involved: `auth.ts`, `api.ts`, `Navbar.tsx`, `dashboard/page.tsx`
 
-- [ ] Add explicit CORS config
+- [x] Add explicit CORS config
   - Description: Configure the backend to allow the local frontend origin.
   - Why it matters: Makes local frontend/backend integration predictable.
   - Complexity: Low
   - Risk: Low
   - Priority: P2
+  - Status: Implemented in `SecurityConfig.java` for `http://localhost:3000`.
   - Files likely involved: `SecurityConfig.java` or a new backend config class
 
-- [ ] Improve dashboard empty states
+- [x] Improve dashboard empty states
   - Description: Make first-run states clearer for no transactions, no holdings, and no snapshots.
   - Why it matters: New users need guidance on what to do first.
   - Complexity: Low
   - Risk: Low
   - Priority: P2
+  - Status: Implemented in holdings, transactions, performance history, and market-data display copy.
   - Files likely involved: `dashboard/page.tsx`, `PriceTable.tsx`, `TransactionsTable.tsx`, `PerformanceHistory.tsx`
 
-- [ ] Separate dashboard loading and error states
+- [x] Separate dashboard loading and error states
   - Description: Let portfolio, transactions, and history fail independently instead of one broad load failure.
   - Why it matters: One failed endpoint should not blank the whole dashboard.
   - Complexity: Medium
   - Risk: Medium
   - Priority: P2
+  - Status: Implemented with separate portfolio, transaction, and performance loading/error states.
   - Files likely involved: `dashboard/page.tsx`, `api.ts`
 
 ## Nice To Have
@@ -257,6 +263,14 @@ Use this as a working backlog for the crypto portfolio tracker. Tasks are groupe
   - Risk: Low
   - Priority: P2
   - Files likely involved: `MarketDataServiceImplTest.java`
+
+- [ ] Add backend test for portfolio market-data availability flags
+  - Description: Confirm unsupported symbols set `marketPriceAvailable=false` and `hasUnsupportedMarketData=true`.
+  - Why it matters: Protects the new contract that prevents misleading zero-value portfolio display.
+  - Complexity: Low
+  - Risk: Low
+  - Priority: P2
+  - Files likely involved: `PortfolioServiceImplTest.java`, `PortfolioSummaryIntegrationTest.java`
 
 - [ ] Add backend performance history integration test
   - Description: Confirm snapshots are created after transactions and returned by range.

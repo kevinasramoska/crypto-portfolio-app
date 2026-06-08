@@ -10,6 +10,7 @@ import java.util.List;
 public interface PortfolioService {
     List<HoldingResponse> getUserHoldings();
     PortfolioSummaryResponse getCurrentUserPortfolioSummary();
+    PortfolioSummaryResponse getPortfolioSummaryForUser(User user);
     PortfolioPerformanceHistoryResponse getPortfolioPerformanceHistory(String range);
     void createSnapshotForCurrentUser();
 }

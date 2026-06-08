@@ -13,6 +13,7 @@ export type Holding = {
   investedValueUsd: number;
   currentValueUsd: number;
   profitLossUsd: number;
+  marketPriceAvailable: boolean;
 };
 
 export type PriceMap = Record<string, number>;
@@ -54,6 +55,7 @@ export type PortfolioHoldingSummary = {
   investedValueUsd: number;
   currentValueUsd: number;
   unrealisedProfitLossUsd: number;
+  marketPriceAvailable: boolean;
 };
 
 export type PortfolioSummary = {
@@ -63,6 +65,7 @@ export type PortfolioSummary = {
   totalRealisedProfitLossUsd: number;
   totalProfitLossUsd: number;
   holdings: PortfolioHoldingSummary[];
+  hasUnsupportedMarketData: boolean;
 };
 
 export type PerformanceRange = "7d" | "30d" | "90d";

@@ -20,4 +20,5 @@ public class PortfolioHoldingSummaryResponse {
     private BigDecimal investedValueUsd;
     private BigDecimal currentValueUsd;
     private BigDecimal unrealisedProfitLossUsd;
+    private boolean marketPriceAvailable;
 }

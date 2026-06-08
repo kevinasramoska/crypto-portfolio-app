@@ -11,5 +11,6 @@ public record HoldingResponse(
         BigDecimal currentPriceUsd,
         BigDecimal investedValueUsd,
         BigDecimal currentValueUsd,
-        BigDecimal profitLossUsd
+        BigDecimal profitLossUsd,
+        boolean marketPriceAvailable
 ) {}

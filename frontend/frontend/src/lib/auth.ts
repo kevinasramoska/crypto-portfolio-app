@@ -58,6 +58,12 @@ export function clearToken() {
   window.localStorage.removeItem(TOKEN_STORAGE_KEY);
 }
 
+export function clearAuthSession() {
+  if (!isBrowser()) return;
+  clearToken();
+  window.localStorage.removeItem(ACTIVE_PROFILE_STORAGE_KEY);
+}
+
 export function setActiveProfile(email: string, firstName?: string) {
   if (!isBrowser()) return;
   const normalizedEmail = sanitizeEmail(email);
@@ -93,9 +99,7 @@ export function getActiveProfile(): ActiveProfile | null {
 }
 
 export function logout() {
-  if (!isBrowser()) return;
-  clearToken();
-  window.localStorage.removeItem(ACTIVE_PROFILE_STORAGE_KEY);
+  clearAuthSession();
 }
 
 export function authHeader() {

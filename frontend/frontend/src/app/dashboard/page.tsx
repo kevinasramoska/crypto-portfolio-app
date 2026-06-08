@@ -18,6 +18,7 @@ import {
   getPrices,
   getTransactionSummary,
   getTransactions,
+  AUTH_REQUIRED_MESSAGE,
 } from "@/lib/api";
 import {
   Holding,
@@ -32,6 +33,10 @@ import {
 
 const DEFAULT_WATCHLIST = ["BTC", "ETH", "SOL", "LINK", "DOGE"];
 const WATCHLIST_STORAGE_KEY = "crypto-dashboard-watchlist";
+
+function isAuthError(error: unknown) {
+  return error instanceof Error && error.message === AUTH_REQUIRED_MESSAGE;
+}
 
 export default function DashboardPage() {
   const [prices, setPrices] = useState<PriceMap>({});
@@ -48,10 +53,12 @@ export default function DashboardPage() {
   const [performanceHistory, setPerformanceHistory] = useState<PortfolioPerformanceHistory | null>(null);
   const [performanceRange, setPerformanceRange] = useState<PerformanceRange>("30d");
 
-  const [portfolioLoading, setPortfolioLoading] = useState(true);
-  const [portfolioError, setPortfolioError] = useState<string | null>(null);
+  const [portfolioDataLoading, setPortfolioDataLoading] = useState(true);
+  const [portfolioDataError, setPortfolioDataError] = useState<string | null>(null);
   const [portfolioRequiresAuth, setPortfolioRequiresAuth] = useState(false);
+  const [transactionLoading, setTransactionLoading] = useState(true);
   const [transactionError, setTransactionError] = useState<string | null>(null);
+  const [performanceLoading, setPerformanceLoading] = useState(true);
   const [performanceError, setPerformanceError] = useState<string | null>(null);
   const [symbolFilter, setSymbolFilter] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("value");
@@ -85,9 +92,10 @@ export default function DashboardPage() {
   const hasWatchlist = watchlist.length > 0;
   const formattedLastPriceUpdate = lastPriceUpdated?.toLocaleTimeString() ?? null;
   const isFiltering = symbolFilter.trim().length > 0;
+  const dashboardLoading = portfolioDataLoading || transactionLoading || performanceLoading;
   const emptyMessage =
     holdings.length === 0
-      ? "No open holdings yet. Record a buy transaction to create a holding."
+      ? "No open holdings yet. Record a buy transaction to create your first position."
       : "No holdings match your current filters.";
 
   const loadPrices = useCallback(async () => {
@@ -113,54 +121,98 @@ export default function DashboardPage() {
     }
   }, [watchlist]);
 
-  const loadPortfolio = useCallback(async () => {
+  const loadPortfolioData = useCallback(async () => {
     try {
-      setPortfolioLoading(true);
-      setPortfolioError(null);
-      setTransactionError(null);
-      setPerformanceError(null);
+      setPortfolioDataLoading(true);
+      setPortfolioDataError(null);
 
-      const [holdingsData, summaryData, transactionsData, transactionSummaryData, performanceData] =
-        await Promise.all([
-          getHoldings(),
-          getPortfolioSummary(),
-          getTransactions(),
-          getTransactionSummary(),
-          getPortfolioPerformanceHistory(performanceRange),
-        ]);
+      const [holdingsData, summaryData] = await Promise.all([
+        getHoldings(),
+        getPortfolioSummary(),
+      ]);
 
       setHoldings(holdingsData);
       setPortfolioSummary(summaryData);
-      setTransactions(transactionsData);
-      setTransactionSummary(transactionSummaryData);
-      setPerformanceHistory(performanceData);
       setPortfolioRequiresAuth(false);
     } catch (error) {
-      console.error("Error loading portfolio", error);
-      if (error instanceof Error && error.message === "Authentication required") {
-        setPortfolioError("Login to view your portfolio.");
+      console.error("Error loading portfolio data", error);
+      if (isAuthError(error)) {
+        setPortfolioDataError("Login to view your portfolio.");
         setPortfolioRequiresAuth(true);
       } else {
-        setPortfolioError("Unable to load your portfolio right now.");
-        setPortfolioRequiresAuth(false);
+        setPortfolioDataError("Unable to load your portfolio right now.");
       }
       setHoldings([]);
       setPortfolioSummary(null);
+    } finally {
+      setPortfolioDataLoading(false);
+    }
+  }, []);
+
+  const loadTransactionData = useCallback(async () => {
+    try {
+      setTransactionLoading(true);
+      setTransactionError(null);
+
+      const [transactionsData, transactionSummaryData] = await Promise.all([
+        getTransactions(),
+        getTransactionSummary(),
+      ]);
+
+      setTransactions(transactionsData);
+      setTransactionSummary(transactionSummaryData);
+    } catch (error) {
+      console.error("Error loading transaction data", error);
+      if (isAuthError(error)) {
+        setTransactionError("Login to view your transactions.");
+        setPortfolioDataError("Login to view your portfolio.");
+        setPortfolioRequiresAuth(true);
+      } else {
+        setTransactionError("Unable to load transactions right now.");
+      }
       setTransactions([]);
       setTransactionSummary(null);
+    } finally {
+      setTransactionLoading(false);
+    }
+  }, []);
+
+  const loadPerformanceData = useCallback(async () => {
+    try {
+      setPerformanceLoading(true);
+      setPerformanceError(null);
+
+      const performanceData = await getPortfolioPerformanceHistory(performanceRange);
+      setPerformanceHistory(performanceData);
+    } catch (error) {
+      console.error("Error loading performance history", error);
+      if (isAuthError(error)) {
+        setPerformanceError("Login to view performance history.");
+        setPortfolioDataError("Login to view your portfolio.");
+        setPortfolioRequiresAuth(true);
+      } else {
+        setPerformanceError("Unable to load performance history right now.");
+      }
       setPerformanceHistory(null);
     } finally {
-      setPortfolioLoading(false);
+      setPerformanceLoading(false);
     }
   }, [performanceRange]);
+
+  const refreshDashboard = useCallback(async () => {
+    await Promise.all([
+      loadPortfolioData(),
+      loadTransactionData(),
+      loadPerformanceData(),
+    ]);
+  }, [loadPerformanceData, loadPortfolioData, loadTransactionData]);
 
   const handleCreateTransaction = useCallback(
     async (payload: TransactionPayload) => {
       await createTransaction(payload);
-      await loadPortfolio();
-      await loadPrices();
+      await Promise.all([refreshDashboard(), loadPrices()]);
     },
-    [loadPortfolio, loadPrices]
+    [loadPrices, refreshDashboard]
   );
 
   const handleAddWatchlist = useCallback(
@@ -187,8 +239,13 @@ export default function DashboardPage() {
   }, [loadPrices, watchlistHydrated]);
 
   useEffect(() => {
-    loadPortfolio();
-  }, [loadPortfolio]);
+    loadPortfolioData();
+    loadTransactionData();
+  }, [loadPortfolioData, loadTransactionData]);
+
+  useEffect(() => {
+    loadPerformanceData();
+  }, [loadPerformanceData]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -270,21 +327,21 @@ export default function DashboardPage() {
             <p className="text-sm text-gray-500">Totals, holdings, realised P/L, and unrealised P/L from the backend.</p>
           </div>
           <button
-            onClick={loadPortfolio}
+            onClick={refreshDashboard}
             className="self-start text-sm text-purple-300 transition hover:text-white disabled:opacity-50 sm:self-auto"
-            disabled={portfolioLoading}
+            disabled={dashboardLoading}
           >
             Refresh portfolio
           </button>
         </div>
 
-        {portfolioError && (
+        {portfolioDataError && (
           <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-6 text-sm text-red-200">
-            {portfolioError}
+            {portfolioDataError}
           </div>
         )}
 
-        <PortfolioSummaryCards summary={portfolioSummary} loading={portfolioLoading} />
+        {!portfolioDataError && <PortfolioSummaryCards summary={portfolioSummary} loading={portfolioDataLoading} />}
       </section>
 
       {!portfolioRequiresAuth && (
@@ -312,13 +369,13 @@ export default function DashboardPage() {
 
               <PriceTable
                 holdings={displayHoldings}
-                loading={portfolioLoading}
-                error={portfolioError}
+                loading={portfolioDataLoading}
+                error={portfolioDataError}
                 emptyMessage={emptyMessage}
               />
             </div>
 
-            <AddTransactionForm onSubmit={handleCreateTransaction} disabled={portfolioLoading} />
+            <AddTransactionForm onSubmit={handleCreateTransaction} disabled={portfolioDataLoading || transactionLoading} />
           </section>
 
           <section className="space-y-6">
@@ -326,13 +383,19 @@ export default function DashboardPage() {
               <h2 className="text-2xl font-semibold">Transaction summary</h2>
               <p className="text-sm text-gray-500">Buy, sell, and realised profit totals.</p>
             </div>
-            <TransactionSummaryCards summary={transactionSummary} loading={portfolioLoading} />
+            {transactionError ? (
+              <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-6 text-sm text-red-200">
+                {transactionError}
+              </div>
+            ) : (
+              <TransactionSummaryCards summary={transactionSummary} loading={transactionLoading} />
+            )}
           </section>
 
           <PerformanceHistory
             history={performanceHistory}
             range={performanceRange}
-            loading={portfolioLoading}
+            loading={performanceLoading}
             error={performanceError}
             onRangeChange={setPerformanceRange}
           />
@@ -342,7 +405,7 @@ export default function DashboardPage() {
               <h2 className="text-2xl font-semibold">Transactions</h2>
               <p className="text-sm text-gray-500">Most recent records from the backend transaction service.</p>
             </div>
-            <TransactionsTable transactions={transactions} loading={portfolioLoading} error={transactionError} />
+            <TransactionsTable transactions={transactions} loading={transactionLoading} error={transactionError} />
           </section>
         </>
       )}

@@ -64,7 +64,7 @@ export default function PerformanceHistory({
         </div>
       ) : !history?.history.length ? (
         <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-6 text-sm text-gray-400">
-          No performance snapshots in this range yet.
+          No performance snapshots in this range yet. Snapshots are created after transactions.
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-gray-800">

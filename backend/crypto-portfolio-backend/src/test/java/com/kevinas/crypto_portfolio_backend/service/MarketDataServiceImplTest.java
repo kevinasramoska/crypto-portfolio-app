@@ -105,7 +105,7 @@ class MarketDataServiceImplTest {
         customMarketDataService.getCurrentPrices(List.of("BTC"));
 
         verify(customRestTemplate).getForObject(
-                argThat(url ->
+                org.mockito.ArgumentMatchers.<String>argThat(url ->
                         url.startsWith("https://prices.example.test/v9/simple/price")
                                 && url.contains("ids=bitcoin")
                                 && url.contains("vs_currencies=usd")
@@ -128,7 +128,7 @@ class MarketDataServiceImplTest {
         customMarketDataService.getCurrentPrices(List.of("BTC"));
 
         verify(customRestTemplate).getForObject(
-                argThat(url -> {
+                org.mockito.ArgumentMatchers.<String>argThat(url -> {
                     assertTrue(url.startsWith("https://prices.example.test/v9/simple/price"));
                     assertFalse(url.contains("v9//simple/price"));
                     return true;

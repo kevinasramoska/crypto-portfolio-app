@@ -1,4 +1,4 @@
-import { authHeader } from "./auth";
+import { authHeader, clearAuthSession } from "./auth";
 import {
   Holding,
   LoginResponse,
@@ -12,6 +12,7 @@ import {
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api";
+export const AUTH_REQUIRED_MESSAGE = "Authentication required";
 
 async function parseJson<T>(res: Response, errorMessage: string): Promise<T> {
   if (!res.ok) {
@@ -51,7 +52,8 @@ async function authorizedFetch(path: string, init?: RequestInit) {
   });
 
   if (res.status === 401 || res.status === 403) {
-    throw new Error("Authentication required");
+    clearAuthSession();
+    throw new Error(AUTH_REQUIRED_MESSAGE);
   }
 
   return res;
@@ -103,6 +105,7 @@ export async function getHoldings(): Promise<Holding[]> {
       investedValueUsd: toNumber(holding.investedValueUsd),
       currentValueUsd: toNumber(holding.currentValueUsd),
       profitLossUsd: toNumber(holding.profitLossUsd),
+      marketPriceAvailable: Boolean(holding.marketPriceAvailable),
     };
   });
 }

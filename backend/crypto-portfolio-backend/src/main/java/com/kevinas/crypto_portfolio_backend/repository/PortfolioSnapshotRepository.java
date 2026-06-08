@@ -9,4 +9,6 @@ import java.util.List;
 
 public interface PortfolioSnapshotRepository extends JpaRepository<PortfolioSnapshot, Long> {
     List<PortfolioSnapshot> findByUserAndSnapshotAtGreaterThanEqualOrderBySnapshotAtAsc(User user, Instant from);
+    boolean existsByUserAndSnapshotAtBetween(User user, Instant from, Instant to);
+    List<PortfolioSnapshot> findByUserAndSnapshotAtBetweenOrderBySnapshotAtAsc(User user, Instant from, Instant to);
 }

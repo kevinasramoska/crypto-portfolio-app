@@ -19,4 +19,5 @@ public class PortfolioSummaryResponse {
     private BigDecimal totalRealisedProfitLossUsd;
     private BigDecimal totalProfitLossUsd;
     private List<PortfolioHoldingSummaryResponse> holdings;
+    private boolean hasUnsupportedMarketData;
 }

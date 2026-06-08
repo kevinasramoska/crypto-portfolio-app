@@ -10,6 +10,8 @@ The backend provides authentication, transaction recording, holdings updates, po
 
 The frontend provides login/register screens and a dashboard for watchlist prices, portfolio summary, holdings, transaction entry, transaction history, transaction totals, and performance history.
 
+Recent dashboard reliability work added clearer unsupported market-data display, stale-token cleanup on auth failures, explicit local CORS support, improved empty states, and separated dashboard loading/error state by data slice.
+
 ## 2. Tech Stack
 
 | Layer | Technology |
@@ -109,6 +111,7 @@ Startup flow:
 4. The API listens on port `8080` by default.
 5. Public endpoints are available for auth, market prices, and Swagger/OpenAPI.
 6. Protected endpoints require a valid JWT Bearer token.
+7. CORS is explicitly enabled for the local frontend origin `http://localhost:3000`.
 
 ### Frontend
 
@@ -153,6 +156,7 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8080/api
 ```text
 Authorization: Bearer <token>
 ```
+7. If a protected frontend request receives `401` or `403`, the stale token and active profile are cleared and the dashboard prompts the user to log in again.
 
 ### Transaction Flow
 
@@ -182,17 +186,20 @@ Authorization: Bearer <token>
    - realised profit/loss
    - total profit/loss
 6. Backend returns portfolio DTOs.
+7. Holdings and portfolio summary responses include market-data availability flags so unsupported symbols do not look like real `$0.00` valuations.
 
 ### Dashboard Flow
 
 1. Dashboard loads public watchlist prices from `/api/market/prices`.
-2. Dashboard loads protected portfolio data with the stored JWT:
+2. Dashboard loads protected data with separate request groups:
    - holdings
    - portfolio summary
    - transaction history
    - transaction summary
    - performance history
-3. Creating a transaction refreshes portfolio and price data.
+3. Portfolio, transaction, and performance history failures are handled independently where possible.
+4. Creating a transaction refreshes portfolio, transaction, performance, and price data.
+5. Unsupported prices show explicit no-market-data states in watchlist cards, holdings, and summary UI.
 
 ## 6. Important Files
 
@@ -218,6 +225,14 @@ Authorization: Bearer <token>
 | `frontend/frontend/src/lib/api.ts` | Frontend HTTP client |
 | `frontend/frontend/src/lib/auth.ts` | Token/profile localStorage helpers |
 | `frontend/frontend/src/app/dashboard/page.tsx` | Main dashboard screen |
+
+Current market-data response additions:
+
+| Response | Field | Purpose |
+|---|---|---|
+| Holding response | `marketPriceAvailable` | Indicates whether current price/value/P&L can be trusted for the holding |
+| Portfolio holding summary | `marketPriceAvailable` | Indicates whether summary values are based on supported market data |
+| Portfolio summary | `hasUnsupportedMarketData` | Indicates whether totals are partial because at least one holding has no market data |
 
 ## 7. Development Commands
 
@@ -338,5 +353,11 @@ Frontend environment variables:
 - Both `application.yaml` and `application.properties` define backend configuration, so developers should check Spring config precedence before changing runtime settings.
 - Scheduler support is partially present, but scheduler classes are commented out.
 - Price refresh currently happens lazily through API calls and an in-memory cache.
+- Current supported market symbols are `BTC`, `ETH`, `SOL`, `ADA`, `XRP`, `DOGE`, `DOT`, `AVAX`, `MATIC`, `LINK`, `LTC`, and `BNB`.
+- Unsupported symbols can still be recorded manually, but portfolio UI flags missing market data.
+- Dashboard protected API failures clear stale auth state when the backend returns `401` or `403`.
+- Dashboard portfolio, transaction, and performance-history sections now load and fail independently.
+- Local backend CORS currently allows `http://localhost:3000`.
 - No seed data is present.
 - No frontend tests are currently configured.
+- This repository also exists locally at `/Users/kevinasramoska/Documents/GitHub/crypto-portfolio-app`; make sure commits are made from the intended checkout.

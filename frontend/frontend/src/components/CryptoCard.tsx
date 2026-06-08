@@ -34,7 +34,7 @@ export default function CryptoCard({ symbol, price, loading, currency = "EUR", o
       ) : hasPrice ? (
         <p className="text-3xl mt-2 text-purple-300">{formatter.format(price)}</p>
       ) : (
-        <p className="text-sm mt-2 text-red-400">No data</p>
+        <p className="text-sm mt-2 text-red-400">No market data</p>
       )}
     </div>
   );

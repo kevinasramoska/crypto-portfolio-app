@@ -49,7 +49,7 @@ export default function TransactionsTable({ transactions, loading, error }: Prop
   if (!transactions.length) {
     return (
       <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-6 text-sm text-gray-400">
-        No transactions yet.
+        No transactions yet. Record a buy or sell transaction to get started.
       </div>
     );
   }
