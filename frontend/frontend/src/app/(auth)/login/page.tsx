@@ -40,7 +40,7 @@ export default function LoginPage() {
           </label>
           <input
             id="email"
-            className="w-full p-3 bg-zinc-800 rounded border border-zinc-700"
+            className="w-full p-3 bg-zinc-800 rounded-sm border border-zinc-700"
             placeholder="you@example.com"
             type="email"
             autoComplete="email"
@@ -54,7 +54,7 @@ export default function LoginPage() {
           </label>
           <input
             id="password"
-            className="w-full p-3 bg-zinc-800 rounded border border-zinc-700"
+            className="w-full p-3 bg-zinc-800 rounded-sm border border-zinc-700"
             placeholder="••••••••"
             type="password"
             autoComplete="current-password"

@@ -54,7 +54,7 @@ export default function RegisterPage() {
           </label>
           <input
             id="reg-first-name"
-            className="p-3 rounded bg-zinc-800 border border-zinc-700"
+            className="p-3 rounded-sm bg-zinc-800 border border-zinc-700"
             type="text"
             placeholder="Satoshi"
             value={firstName}
@@ -67,7 +67,7 @@ export default function RegisterPage() {
           </label>
           <input
             id="reg-email"
-            className="p-3 rounded bg-zinc-800 border border-zinc-700"
+            className="p-3 rounded-sm bg-zinc-800 border border-zinc-700"
             type="email"
             placeholder="you@example.com"
             value={email}
@@ -81,7 +81,7 @@ export default function RegisterPage() {
           </label>
           <input
             id="reg-password"
-            className="p-3 rounded bg-zinc-800 border border-zinc-700"
+            className="p-3 rounded-sm bg-zinc-800 border border-zinc-700"
             type="password"
             placeholder="Choose a secure password"
             value={password}
@@ -95,7 +95,7 @@ export default function RegisterPage() {
           </label>
           <input
             id="reg-confirm"
-            className="p-3 rounded bg-zinc-800 border border-zinc-700"
+            className="p-3 rounded-sm bg-zinc-800 border border-zinc-700"
             type="password"
             placeholder="Repeat your password"
             value={confirmPassword}
