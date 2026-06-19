@@ -114,29 +114,32 @@ Use this as a working backlog for the crypto portfolio tracker. Tasks are groupe
 
 ## Nice To Have
 
-- [ ] Add portfolio refresh timestamp
+- [x] Add portfolio refresh timestamp
   - Description: Show when portfolio data was last refreshed.
   - Why it matters: Helps users trust dashboard values.
   - Complexity: Low
   - Risk: Low
   - Priority: P3
-  - Files likely involved: `dashboard/page.tsx`
+  - Status: Completed. Timestamps now show both relative time ("2m ago", "1h ago") and absolute time (date + time) for both prices and portfolio data. Timestamps update in real-time without page refresh.
+  - Files involved: `frontend/frontend/src/app/dashboard/page.tsx`
 
-- [ ] Improve home page
+- [x] Improve home page
   - Description: Replace the basic landing page with a cleaner app entry screen.
   - Why it matters: Current home page is minimal and visually separate from the dashboard.
   - Complexity: Low
   - Risk: Low
   - Priority: P3
-  - Files likely involved: `frontend/frontend/src/app/page.tsx`
+  - Status: Completed with a modern hero section, feature cards with icons, statistics section, and improved CTAs.
+  - Files involved: `frontend/frontend/src/app/page.tsx`
 
-- [ ] Add transaction pagination
+- [x] Add transaction pagination
   - Description: Paginate backend and frontend transaction history.
   - Why it matters: Prevents large responses once transaction history grows.
   - Complexity: Medium
   - Risk: Medium
   - Priority: P3
   - Files likely involved: `TransactionController.java`, `TransactionRepository.java`, `TransactionsTable.tsx`, `api.ts`
+  - Status: Completed. Backend endpoints support paginated queries with page/size parameters. Frontend includes pagination controls with previous/next navigation. Default page size is 20. All tests pass.
 
 - [ ] Add asset allocation summary
   - Description: Show each holding’s share of total portfolio value.
@@ -148,21 +151,23 @@ Use this as a working backlog for the crypto portfolio tracker. Tasks are groupe
 
 ## Feature Ideas
 
-- [ ] Add portfolio performance chart
+-- [x] Add portfolio performance chart
   - Description: Visualize `totalCurrentValueUsd` and `totalProfitLossUsd` over time.
   - Why it matters: Makes the existing snapshot feature more useful.
   - Complexity: Medium
   - Risk: Low
   - Priority: P2
   - Files likely involved: `PerformanceHistory.tsx`, new chart component
+  - Status: Completed. Added `MiniPerformanceChart.tsx` and integrated it into `PerformanceHistory.tsx`. Chart renders both total current value (purple) and total profit/loss (amber) as SVG lines.
 
-- [ ] Add realised vs unrealised P/L breakdown
-  - Description: Improve the summary UI with a clearer visual comparison of realised and unrealised profit/loss.
-  - Why it matters: Backend already exposes both values.
-  - Complexity: Low
-  - Risk: Low
-  - Priority: P3
-  - Files likely involved: `PortfolioSummaryCards.tsx`
+ - [x] Add realised vs unrealised P/L breakdown
+   - Description: Improve the summary UI with a clearer visual comparison of realised and unrealised profit/loss.
+   - Why it matters: Backend already exposes both values.
+   - Complexity: Low
+   - Risk: Low
+   - Priority: P3
+   - Files likely involved: `PortfolioSummaryCards.tsx`
+   - Status: Completed. Added a "Realised vs Unrealised" card showing a stacked bar and numeric breakdown in `PortfolioSummaryCards.tsx`.
 
 - [ ] Add supported coin list endpoint
   - Description: Expose backend-supported CoinGecko mappings to the frontend.

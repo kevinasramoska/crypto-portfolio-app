@@ -46,6 +46,11 @@ export default function PortfolioSummaryCards({ summary, loading }: Props) {
       helper: "Realised plus unrealised",
     },
     {
+      label: "Realised vs Unrealised",
+      value: "",
+      helper: "Breakdown of closed vs open P/L",
+    },
+    {
       label: "Assets",
       value: String(summary?.holdings.length ?? 0),
       helper: "Current open positions",
@@ -74,8 +79,63 @@ export default function PortfolioSummaryCards({ summary, loading }: Props) {
         {cards.map(card => (
           <div key={card.label} className="rounded-xl border border-gray-800 bg-gray-950/60 p-5">
             <p className="text-xs uppercase tracking-wide text-gray-500">{card.label}</p>
-            <p className="mt-3 text-2xl font-semibold text-white">{card.value}</p>
-            <p className="mt-2 text-sm text-gray-500">{card.helper}</p>
+            {card.label === "Realised vs Unrealised" ? (
+              // custom breakdown view
+              <div className="mt-3">
+                {summary ? (
+                  (() => {
+                    const realised = summary.totalRealisedProfitLossUsd ?? 0;
+                    const unrealised = summary.totalUnrealisedProfitLossUsd ?? 0;
+                    const absReal = Math.abs(realised);
+                    const absUnreal = Math.abs(unrealised);
+                    const totalAbs = absReal + absUnreal || 1;
+                    const realisedPct = Math.round((absReal / totalAbs) * 100);
+                    const unrealPct = 100 - realisedPct;
+
+                    const realisedSign = realised >= 0 ? "+" : "-";
+                    const unrealSign = unrealised >= 0 ? "+" : "-";
+
+                    return (
+                      <div>
+                        <div className="h-3 w-full rounded-full bg-gray-900/50 overflow-hidden">
+                          <div
+                            className="h-full bg-emerald-500"
+                            style={{ width: `${realisedPct}%` }}
+                            aria-hidden
+                          />
+                          <div
+                            className="h-full bg-violet-600"
+                            style={{ width: `${unrealPct}%`, marginLeft: `-${unrealPct}%` }}
+                            aria-hidden
+                          />
+                        </div>
+
+                        <div className="mt-3 flex items-center justify-between text-sm text-gray-300">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+                            <span>Realised</span>
+                            <span className="ml-2 font-semibold text-white">{realisedSign}{formatCurrency(Math.abs(realised))}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="inline-block h-2 w-2 rounded-full bg-violet-600" />
+                            <span>Unrealised</span>
+                            <span className="ml-2 font-semibold text-white">{unrealSign}{formatCurrency(Math.abs(unrealised))}</span>
+                          </div>
+                        </div>
+                        <div className="mt-1 text-xs text-gray-500">Shows relative contribution to total P/L</div>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <p className="mt-3 text-2xl font-semibold text-white">—</p>
+                )}
+              </div>
+            ) : (
+              <>
+                <p className="mt-3 text-2xl font-semibold text-white">{card.value}</p>
+                <p className="mt-2 text-sm text-gray-500">{card.helper}</p>
+              </>
+            )}
           </div>
         ))}
       </div>

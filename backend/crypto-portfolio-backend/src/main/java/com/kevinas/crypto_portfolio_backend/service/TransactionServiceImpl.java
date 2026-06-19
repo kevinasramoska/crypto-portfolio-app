@@ -1,5 +1,6 @@
 package com.kevinas.crypto_portfolio_backend.service;
 
+import com.kevinas.crypto_portfolio_backend.dto.PaginatedTransactionsResponse;
 import com.kevinas.crypto_portfolio_backend.dto.TransactionRequest;
 import com.kevinas.crypto_portfolio_backend.dto.TransactionResponse;
 import com.kevinas.crypto_portfolio_backend.dto.TransactionSummaryResponse;
@@ -15,6 +16,10 @@ import com.kevinas.crypto_portfolio_backend.repository.TransactionRepository;
 import com.kevinas.crypto_portfolio_backend.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -86,6 +91,28 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     @Override
+    public PaginatedTransactionsResponse getTransactionsForCurrentUserPaginated(int pageNumber, int pageSize) {
+        User user = getCurrentUser();
+
+        Pageable pageable = PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Transaction> page = transactionRepository.findByUserOrderByCreatedAtDesc(user, pageable);
+
+        List<TransactionResponse> content = page.getContent().stream()
+                .map(this::toResponse)
+                .toList();
+
+        return new PaginatedTransactionsResponse(
+                content,
+                page.getNumber(),
+                page.getSize(),
+                page.getTotalElements(),
+                page.getTotalPages(),
+                page.hasNext(),
+                page.hasPrevious()
+        );
+    }
+
+    @Override
     public TransactionSummaryResponse getTransactionSummary() {
         User user = getCurrentUser();
         List<Transaction> transactions = transactionRepository.findByUserOrderByCreatedAtDesc(user);
@@ -111,6 +138,7 @@ public class TransactionServiceImpl implements TransactionService {
         );
     }
 
+    // ...existing code...
     private Holding handleBuy(User user, Coin coin, Holding holding, BigDecimal buyQuantity, BigDecimal buyPriceUsd) {
         if (holding == null) {
             holding = Holding.builder()

@@ -1,5 +1,6 @@
 package com.kevinas.crypto_portfolio_backend.service;
 
+import com.kevinas.crypto_portfolio_backend.dto.PaginatedTransactionsResponse;
 import com.kevinas.crypto_portfolio_backend.dto.TransactionRequest;
 import com.kevinas.crypto_portfolio_backend.dto.TransactionResponse;
 import com.kevinas.crypto_portfolio_backend.dto.TransactionSummaryResponse;
@@ -29,6 +30,15 @@ public interface TransactionService {
      * @return list of transaction responses
      */
     List<TransactionResponse> getTransactionsForCurrentUser();
+
+    /**
+     * Retrieves paginated transactions for the authenticated user, ordered by creation date descending.
+     *
+     * @param pageNumber zero-indexed page number
+     * @param pageSize number of transactions per page
+     * @return paginated transaction response
+     */
+    PaginatedTransactionsResponse getTransactionsForCurrentUserPaginated(int pageNumber, int pageSize);
 
     /**
      * Retrieves a summary of transactions for the authenticated user, including total buy/sell volumes and realised profit.

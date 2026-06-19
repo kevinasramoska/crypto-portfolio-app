@@ -2,6 +2,7 @@ import { authHeader, clearAuthSession } from "./auth";
 import {
   Holding,
   LoginResponse,
+  PaginatedTransactions,
   PerformanceRange,
   PortfolioPerformanceHistory,
   PortfolioSummary,
@@ -125,6 +126,11 @@ export async function getPortfolioPerformanceHistory(
 export async function getTransactions(): Promise<Transaction[]> {
   const res = await authorizedFetch("/transactions");
   return parseJson(res, "Failed to fetch transactions");
+}
+
+export async function getTransactionsPaginated(page: number = 0, size: number = 20): Promise<PaginatedTransactions> {
+  const res = await authorizedFetch(`/transactions/paginated?page=${page}&size=${size}`);
+  return parseJson(res, "Failed to fetch paginated transactions");
 }
 
 export async function getTransactionSummary(): Promise<TransactionSummary> {

@@ -6,6 +6,13 @@ type Props = {
   transactions: Transaction[];
   loading?: boolean;
   error?: string | null;
+  pageNumber?: number;
+  pageSize?: number;
+  totalElements?: number;
+  totalPages?: number;
+  hasNext?: boolean;
+  hasPrevious?: boolean;
+  onPageChange?: (page: number) => void;
 };
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
@@ -27,7 +34,18 @@ function formatDate(value: string) {
   return date.toLocaleString();
 }
 
-export default function TransactionsTable({ transactions, loading, error }: Props) {
+export default function TransactionsTable({
+  transactions,
+  loading,
+  error,
+  pageNumber = 0,
+  pageSize = 20,
+  totalElements = 0,
+  totalPages = 0,
+  hasNext = false,
+  hasPrevious = false,
+  onPageChange,
+}: Props) {
   if (loading) {
     return (
       <div className="space-y-3">
@@ -54,47 +72,79 @@ export default function TransactionsTable({ transactions, loading, error }: Prop
     );
   }
 
+  const startingIndex = pageNumber * pageSize + 1;
+  const endingIndex = Math.min((pageNumber + 1) * pageSize, totalElements);
+
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-800">
-      <table className="w-full min-w-[780px] table-auto">
-        <thead className="bg-gray-900/80 text-left text-xs uppercase tracking-wider text-gray-400">
-          <tr>
-            <th className="px-6 py-3 font-semibold">Date</th>
-            <th className="px-6 py-3 font-semibold">Type</th>
-            <th className="px-6 py-3 font-semibold">Asset</th>
-            <th className="px-6 py-3 font-semibold text-right">Quantity</th>
-            <th className="px-6 py-3 font-semibold text-right">Price</th>
-            <th className="px-6 py-3 font-semibold text-right">Total</th>
-            <th className="px-6 py-3 font-semibold text-right">Realised P/L</th>
-          </tr>
-        </thead>
-        <tbody className="bg-gray-950/40 text-sm text-gray-100">
-          {transactions.map(transaction => (
-            <tr key={transaction.id} className="border-t border-gray-900/40">
-              <td className="px-6 py-4 text-gray-300">{formatDate(transaction.createdAt)}</td>
-              <td className="px-6 py-4">
-                <span
-                  className={
-                    transaction.type === "BUY"
-                      ? "rounded-full border border-emerald-500/40 px-2.5 py-1 text-xs font-semibold text-emerald-300"
-                      : "rounded-full border border-amber-500/40 px-2.5 py-1 text-xs font-semibold text-amber-300"
-                  }
-                >
-                  {transaction.type}
-                </span>
-              </td>
-              <td className="px-6 py-4">
-                <div className="font-semibold">{transaction.symbol}</div>
-                <div className="text-xs text-gray-500">{transaction.name}</div>
-              </td>
-              <td className="px-6 py-4 text-right">{formatQuantity(transaction.quantity)}</td>
-              <td className="px-6 py-4 text-right">{currencyFormatter.format(transaction.priceUsd)}</td>
-              <td className="px-6 py-4 text-right">{currencyFormatter.format(transaction.totalValueUsd)}</td>
-              <td className="px-6 py-4 text-right">{currencyFormatter.format(transaction.realisedProfitUsd)}</td>
+    <div className="space-y-4">
+      <div className="overflow-x-auto rounded-xl border border-gray-800">
+        <table className="w-full min-w-[780px] table-auto">
+          <thead className="bg-gray-900/80 text-left text-xs uppercase tracking-wider text-gray-400">
+            <tr>
+              <th className="px-6 py-3 font-semibold">Date</th>
+              <th className="px-6 py-3 font-semibold">Type</th>
+              <th className="px-6 py-3 font-semibold">Asset</th>
+              <th className="px-6 py-3 font-semibold text-right">Quantity</th>
+              <th className="px-6 py-3 font-semibold text-right">Price</th>
+              <th className="px-6 py-3 font-semibold text-right">Total</th>
+              <th className="px-6 py-3 font-semibold text-right">Realised P/L</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="bg-gray-950/40 text-sm text-gray-100">
+            {transactions.map(transaction => (
+              <tr key={transaction.id} className="border-t border-gray-900/40">
+                <td className="px-6 py-4 text-gray-300">{formatDate(transaction.createdAt)}</td>
+                <td className="px-6 py-4">
+                  <span
+                    className={
+                      transaction.type === "BUY"
+                        ? "rounded-full border border-emerald-500/40 px-2.5 py-1 text-xs font-semibold text-emerald-300"
+                        : "rounded-full border border-amber-500/40 px-2.5 py-1 text-xs font-semibold text-amber-300"
+                    }
+                  >
+                    {transaction.type}
+                  </span>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="font-semibold">{transaction.symbol}</div>
+                  <div className="text-xs text-gray-500">{transaction.name}</div>
+                </td>
+                <td className="px-6 py-4 text-right">{formatQuantity(transaction.quantity)}</td>
+                <td className="px-6 py-4 text-right">{currencyFormatter.format(transaction.priceUsd)}</td>
+                <td className="px-6 py-4 text-right">{currencyFormatter.format(transaction.totalValueUsd)}</td>
+                <td className="px-6 py-4 text-right">{currencyFormatter.format(transaction.realisedProfitUsd)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {onPageChange && totalElements > 0 && (
+        <div className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-900/50 px-6 py-3 text-sm text-gray-300">
+          <div className="text-xs text-gray-500">
+            Showing {startingIndex} to {endingIndex} of {totalElements} transactions
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => onPageChange(pageNumber - 1)}
+              disabled={!hasPrevious}
+              className="rounded border border-gray-700 px-3 py-1 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50 enabled:hover:border-purple-500 enabled:hover:text-white"
+            >
+              Previous
+            </button>
+            <div className="flex items-center gap-2 px-2 text-xs">
+              Page {pageNumber + 1} of {totalPages}
+            </div>
+            <button
+              onClick={() => onPageChange(pageNumber + 1)}
+              disabled={!hasNext}
+              className="rounded border border-gray-700 px-3 py-1 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50 enabled:hover:border-purple-500 enabled:hover:text-white"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -16,24 +16,25 @@ The app lets users:
 ## Tech Stack
 
 Backend:
-- Java 21
-- Spring Boot 3.5
+- Java 26
+- Spring Boot 4.1.0
 - Spring MVC REST controllers
 - Spring Security
-- JWT
+- JWT (jjwt 0.12.5)
 - BCrypt
 - PostgreSQL
 - Spring Data JPA / Hibernate
 - Flyway
 - JUnit 5
 - Spring Boot Test
-- MockMvc
+- MockMvc (spring-boot-webmvc-test)
 - Mockito
+- Testcontainers (for future use)
 - H2 for tests
 
 Frontend:
-- Next.js 14
-- React 18
+- Next.js 16.2.9
+- React 19.2.7
 - TypeScript
 - Tailwind CSS
 
@@ -58,12 +59,15 @@ Important backend folders:
 - `dto` = request/response objects
 - `security` = JWT and Spring Security
 - `exception` = global error handling
+- `config` = Spring configuration (server, security, database, API clients)
+- `scheduler` = scheduled tasks (currently disabled)
+- `util` = utilities like CoinGeckoSymbolMapper for symbol-to-ID mappings
 - `db/migration` = Flyway migrations
 
 Important frontend folders:
 - `src/app` = Next.js App Router pages
 - `src/components` = reusable UI components
-- `src/lib` = API client, auth helpers, shared types
+- `src/lib` = API client (`api.ts`), auth helpers (`auth.ts`), shared types (`types.ts`), and supported coins list (`supportedCoins.ts`)
 
 ## Architecture Rules
 
@@ -93,10 +97,11 @@ The app is transaction-driven.
 ## Market Data Rules
 
 - CoinGecko is used for market data.
-- Supported symbols should be handled consistently.
+- Supported symbols should be handled consistently across frontend and backend.
+- Backend uses `CoinGeckoSymbolMapper` in `util/` to map symbols to CoinGecko numeric IDs.
+- Frontend uses `SUPPORTED_COIN_PRESETS` list in `supportedCoins.ts` to provide quick-access trading presets.
 - Avoid unsupported or invalid symbol/name combinations.
-- Prefer one shared mapping/list for supported symbols where practical.
-- Do not duplicate symbol/name mappings across many files.
+- Prefer centralised mapping/list for supported symbols—do not duplicate symbol/name mappings across many files.
 - Preserve existing market API behaviour unless explicitly changing it.
 
 ## Security Rules
@@ -124,3 +129,11 @@ Backend tests:
 ```bash
 cd backend/crypto-portfolio-backend
 ./mvnw test
+```
+
+**Backend test patterns:**
+- Integration tests use `@SpringBootTest` with `@AutoConfigureMockMvc` (Spring Boot 4 feature).
+- Tests activate the `test` profile which uses `application-test.properties`: H2 in-memory database with `ddl-auto=create-drop` and Flyway disabled for isolation.
+- `@Import(TestConfig.class)` provides mocked beans (e.g., `MarketDataService`) via Mockito to prevent external API calls.
+- Use `ObjectMapper` for JSON serialization in assertions.
+- Tests are isolated per-test-method; schema is recreated for each test.

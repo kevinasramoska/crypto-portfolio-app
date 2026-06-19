@@ -1,5 +1,6 @@
 package com.kevinas.crypto_portfolio_backend.controller;
 
+import com.kevinas.crypto_portfolio_backend.dto.PaginatedTransactionsResponse;
 import com.kevinas.crypto_portfolio_backend.dto.TransactionRequest;
 import com.kevinas.crypto_portfolio_backend.dto.TransactionResponse;
 import com.kevinas.crypto_portfolio_backend.dto.TransactionSummaryResponse;
@@ -26,6 +27,14 @@ public class TransactionController {
     @GetMapping
     public ResponseEntity<List<TransactionResponse>> getTransactions() {
         return ResponseEntity.ok(transactionService.getTransactionsForCurrentUser());
+    }
+
+    @GetMapping("/paginated")
+    public ResponseEntity<PaginatedTransactionsResponse> getTransactionsPaginated(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(transactionService.getTransactionsForCurrentUserPaginated(page, size));
     }
 
     @GetMapping("/summary")

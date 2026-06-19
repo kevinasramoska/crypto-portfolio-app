@@ -32,6 +32,16 @@ export type Transaction = {
   createdAt: string;
 };
 
+export type PaginatedTransactions = {
+  content: Transaction[];
+  pageNumber: number;
+  pageSize: number;
+  totalElements: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+};
+
 export type TransactionPayload = {
   symbol: string;
   name: string;

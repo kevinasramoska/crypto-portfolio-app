@@ -1,6 +1,7 @@
 "use client";
 
 import { PerformanceRange, PortfolioPerformanceHistory } from "@/lib/types";
+import MiniPerformanceChart from "@/components/MiniPerformanceChart";
 
 type Props = {
   history: PortfolioPerformanceHistory | null;
@@ -67,28 +68,38 @@ export default function PerformanceHistory({
           No performance snapshots in this range yet. Snapshots are created after transactions.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-800">
-          <table className="w-full min-w-[640px] table-auto">
-            <thead className="bg-gray-900/80 text-left text-xs uppercase tracking-wider text-gray-400">
-              <tr>
-                <th className="px-6 py-3 font-semibold">Date</th>
-                <th className="px-6 py-3 font-semibold text-right">Invested</th>
-                <th className="px-6 py-3 font-semibold text-right">Current value</th>
-                <th className="px-6 py-3 font-semibold text-right">Total P/L</th>
-              </tr>
-            </thead>
-            <tbody className="bg-gray-950/40 text-sm text-gray-100">
-              {history.history.map(point => (
-                <tr key={point.snapshotAt} className="border-t border-gray-900/40">
-                  <td className="px-6 py-4">{formatDate(point.snapshotAt)}</td>
-                  <td className="px-6 py-4 text-right">{currencyFormatter.format(point.totalInvestedUsd)}</td>
-                  <td className="px-6 py-4 text-right">{currencyFormatter.format(point.totalCurrentValueUsd)}</td>
-                  <td className="px-6 py-4 text-right">{currencyFormatter.format(point.totalProfitLossUsd)}</td>
+        <>
+          <MiniPerformanceChart
+            points={history.history.map(p => ({
+              x: p.snapshotAt,
+              y1: p.totalCurrentValueUsd,
+              y2: p.totalProfitLossUsd,
+            }))}
+          />
+
+          <div className="overflow-x-auto rounded-xl border border-gray-800">
+            <table className="w-full min-w-[640px] table-auto">
+              <thead className="bg-gray-900/80 text-left text-xs uppercase tracking-wider text-gray-400">
+                <tr>
+                  <th className="px-6 py-3 font-semibold">Date</th>
+                  <th className="px-6 py-3 font-semibold text-right">Invested</th>
+                  <th className="px-6 py-3 font-semibold text-right">Current value</th>
+                  <th className="px-6 py-3 font-semibold text-right">Total P/L</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="bg-gray-950/40 text-sm text-gray-100">
+                {history.history.map(point => (
+                  <tr key={point.snapshotAt} className="border-t border-gray-900/40">
+                    <td className="px-6 py-4">{formatDate(point.snapshotAt)}</td>
+                    <td className="px-6 py-4 text-right">{currencyFormatter.format(point.totalInvestedUsd)}</td>
+                    <td className="px-6 py-4 text-right">{currencyFormatter.format(point.totalCurrentValueUsd)}</td>
+                    <td className="px-6 py-4 text-right">{currencyFormatter.format(point.totalProfitLossUsd)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </section>
   );

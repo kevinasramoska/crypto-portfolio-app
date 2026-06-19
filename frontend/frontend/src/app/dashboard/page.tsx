@@ -18,7 +18,7 @@ import {
   getPortfolioSummary,
   getPrices,
   getTransactionSummary,
-  getTransactions,
+  getTransactionsPaginated,
   AUTH_REQUIRED_MESSAGE,
 } from "@/lib/api";
 import {
@@ -37,6 +37,37 @@ const WATCHLIST_STORAGE_KEY = "crypto-dashboard-watchlist";
 
 function isAuthError(error: unknown) {
   return error instanceof Error && error.message === AUTH_REQUIRED_MESSAGE;
+}
+
+function formatTimestamp(date: Date | null): { absolute: string; relative: string } | null {
+  if (!date) return null;
+
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  let relative: string;
+  if (diffMins < 1) {
+    relative = "just now";
+  } else if (diffMins < 60) {
+    relative = `${diffMins}m ago`;
+  } else if (diffHours < 24) {
+    relative = `${diffHours}h ago`;
+  } else {
+    relative = `${diffDays}d ago`;
+  }
+
+  const absolute = date.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+
+  return { absolute, relative };
 }
 
 export default function DashboardPage() {
@@ -65,6 +96,14 @@ export default function DashboardPage() {
   const [symbolFilter, setSymbolFilter] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("value");
 
+  // Pagination state
+  const [transactionPageNumber, setTransactionPageNumber] = useState(0);
+  const [transactionPageSize] = useState(20);
+  const [transactionTotalElements, setTransactionTotalElements] = useState(0);
+  const [transactionTotalPages, setTransactionTotalPages] = useState(0);
+  const [transactionHasNext, setTransactionHasNext] = useState(false);
+  const [transactionHasPrevious, setTransactionHasPrevious] = useState(false);
+
   const displayHoldings = useMemo(() => {
     const normalizedFilter = symbolFilter.trim().toLowerCase();
     let filtered = holdings;
@@ -92,8 +131,8 @@ export default function DashboardPage() {
   }, [holdings, symbolFilter, sortKey]);
 
   const hasWatchlist = watchlist.length > 0;
-  const formattedLastPriceUpdate = lastPriceUpdated?.toLocaleTimeString() ?? null;
-  const formattedLastPortfolioUpdate = lastPortfolioUpdated?.toLocaleTimeString() ?? null;
+  const priceTimestamp = formatTimestamp(lastPriceUpdated);
+  const portfolioTimestamp = formatTimestamp(lastPortfolioUpdated);
   const isFiltering = symbolFilter.trim().length > 0;
   const dashboardLoading = portfolioDataLoading || transactionLoading || performanceLoading;
   const emptyMessage =
@@ -159,12 +198,16 @@ export default function DashboardPage() {
       setTransactionLoading(true);
       setTransactionError(null);
 
-      const [transactionsData, transactionSummaryData] = await Promise.all([
-        getTransactions(),
+      const [paginatedData, transactionSummaryData] = await Promise.all([
+        getTransactionsPaginated(transactionPageNumber, transactionPageSize),
         getTransactionSummary(),
       ]);
 
-      setTransactions(transactionsData);
+      setTransactions(paginatedData.content);
+      setTransactionTotalElements(paginatedData.totalElements);
+      setTransactionTotalPages(paginatedData.totalPages);
+      setTransactionHasNext(paginatedData.hasNext);
+      setTransactionHasPrevious(paginatedData.hasPrevious);
       setTransactionSummary(transactionSummaryData);
     } catch (error) {
       console.error("Error loading transaction data", error);
@@ -180,7 +223,7 @@ export default function DashboardPage() {
     } finally {
       setTransactionLoading(false);
     }
-  }, []);
+  }, [transactionPageNumber, transactionPageSize]);
 
   const loadPerformanceData = useCallback(async () => {
     try {
@@ -236,6 +279,10 @@ export default function DashboardPage() {
     setWatchlist(prev => prev.filter(item => item !== symbol));
   }, []);
 
+  const handleTransactionPageChange = useCallback((newPage: number) => {
+    setTransactionPageNumber(newPage);
+  }, []);
+
   useEffect(() => {
     if (!watchlistHydrated) return;
     loadPrices();
@@ -275,23 +322,28 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-12">
-      <section className="space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Dashboard</h1>
-            <p className="mt-1 text-sm text-gray-500">Portfolio data is synced from the backend API.</p>
-          </div>
-          <div className="flex items-center gap-3 text-xs text-gray-500">
-            {formattedLastPriceUpdate && <span>Last update: {formattedLastPriceUpdate}</span>}
-            <button
-              onClick={loadPrices}
-              className="rounded-lg border border-gray-800 px-3 py-1.5 text-xs uppercase tracking-wide text-gray-300 hover:border-purple-500 hover:text-white disabled:opacity-50"
-              disabled={priceLoading}
-            >
-              Refresh prices
-            </button>
-          </div>
-        </div>
+       <section className="space-y-6">
+         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+           <div>
+             <h1 className="text-3xl font-bold">Dashboard</h1>
+             <p className="mt-1 text-sm text-gray-500">Portfolio data is synced from the backend API.</p>
+           </div>
+           <div className="flex items-center gap-3 text-xs text-gray-500">
+             {priceTimestamp && (
+               <div className="flex flex-col items-end gap-0.5">
+                 <span>Prices {priceTimestamp.relative}</span>
+                 <span className="text-xs text-gray-600">{priceTimestamp.absolute}</span>
+               </div>
+             )}
+             <button
+               onClick={loadPrices}
+               className="rounded-lg border border-gray-800 px-3 py-1.5 text-xs uppercase tracking-wide text-gray-300 hover:border-purple-500 hover:text-white disabled:opacity-50"
+               disabled={priceLoading}
+             >
+               Refresh prices
+             </button>
+           </div>
+         </div>
 
         <WatchlistControls
           watchlist={watchlist}
@@ -326,24 +378,27 @@ export default function DashboardPage() {
       </section>
 
       <section className="space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-2xl font-semibold">Portfolio summary</h2>
-            <p className="text-sm text-gray-500">Totals, holdings, realised P/L, and unrealised P/L from the backend.</p>
-          </div>
-          <div className="flex flex-col items-start gap-2 sm:items-end">
-            {formattedLastPortfolioUpdate && (
-              <span className="text-xs text-gray-500">Portfolio updated: {formattedLastPortfolioUpdate}</span>
-            )}
-            <button
-              onClick={refreshDashboard}
-              className="text-sm text-purple-300 transition hover:text-white disabled:opacity-50"
-              disabled={dashboardLoading}
-            >
-              Refresh portfolio
-            </button>
-          </div>
-        </div>
+         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+           <div>
+             <h2 className="text-2xl font-semibold">Portfolio summary</h2>
+             <p className="text-sm text-gray-500">Totals, holdings, realised P/L, and unrealised P/L from the backend.</p>
+           </div>
+           <div className="flex flex-col items-start gap-2 sm:items-end">
+             {portfolioTimestamp && (
+               <div className="flex flex-col items-end gap-0.5">
+                 <span className="text-xs text-gray-500">Portfolio {portfolioTimestamp.relative}</span>
+                 <span className="text-xs text-gray-600">{portfolioTimestamp.absolute}</span>
+               </div>
+             )}
+             <button
+               onClick={refreshDashboard}
+               className="text-sm text-purple-300 transition hover:text-white disabled:opacity-50"
+               disabled={dashboardLoading}
+             >
+               Refresh portfolio
+             </button>
+           </div>
+         </div>
 
         {portfolioDataError && (
           <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-6 text-sm text-red-200">
@@ -423,7 +478,18 @@ export default function DashboardPage() {
               <h2 className="text-2xl font-semibold">Transactions</h2>
               <p className="text-sm text-gray-500">Most recent records from the backend transaction service.</p>
             </div>
-            <TransactionsTable transactions={transactions} loading={transactionLoading} error={transactionError} />
+            <TransactionsTable
+              transactions={transactions}
+              loading={transactionLoading}
+              error={transactionError}
+              pageNumber={transactionPageNumber}
+              pageSize={transactionPageSize}
+              totalElements={transactionTotalElements}
+              totalPages={transactionTotalPages}
+              hasNext={transactionHasNext}
+              hasPrevious={transactionHasPrevious}
+              onPageChange={handleTransactionPageChange}
+            />
           </section>
         </>
       )}
