@@ -79,7 +79,7 @@ export default function PriceTable({
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-gray-800">
+      <div className="overflow-x-auto rounded-xl border border-gray-800" data-testid="holdings-table">
         <table className="w-full min-w-[860px] table-auto">
           <thead className="bg-gray-900/80 text-left text-xs uppercase tracking-wider text-gray-400">
             <tr>
@@ -94,7 +94,7 @@ export default function PriceTable({
           </thead>
           <tbody className="bg-gray-950/40 text-sm text-gray-100">
             {holdings.map(holding => (
-              <tr key={holding.id} className="border-t border-gray-900/40">
+              <tr key={holding.id} className="border-t border-gray-900/40" data-testid={`holding-row-${holding.symbol}`}>
                 <td className="px-6 py-4">
                   <div className="font-semibold">{holding.symbol}</div>
                   <div className="text-xs text-gray-500">{holding.name}</div>

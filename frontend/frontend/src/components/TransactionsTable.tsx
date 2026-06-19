@@ -6,6 +6,8 @@ type Props = {
   transactions: Transaction[];
   loading?: boolean;
   error?: string | null;
+  exportLoading?: boolean;
+  onExportCsv?: () => void;
   pageNumber?: number;
   pageSize?: number;
   totalElements?: number;
@@ -38,6 +40,8 @@ export default function TransactionsTable({
   transactions,
   loading,
   error,
+  exportLoading = false,
+  onExportCsv,
   pageNumber = 0,
   pageSize = 20,
   totalElements = 0,
@@ -77,7 +81,20 @@ export default function TransactionsTable({
 
   return (
     <div className="space-y-4">
-      <div className="overflow-x-auto rounded-xl border border-gray-800">
+      {onExportCsv && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={onExportCsv}
+            disabled={exportLoading}
+            className="rounded-lg border border-gray-700 px-3 py-1.5 text-xs uppercase tracking-wide text-gray-300 transition hover:border-purple-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {exportLoading ? "Exporting..." : "Export CSV"}
+          </button>
+        </div>
+      )}
+
+      <div className="overflow-x-auto rounded-xl border border-gray-800" data-testid="transactions-table">
         <table className="w-full min-w-[780px] table-auto">
           <thead className="bg-gray-900/80 text-left text-xs uppercase tracking-wider text-gray-400">
             <tr>
@@ -92,7 +109,11 @@ export default function TransactionsTable({
           </thead>
           <tbody className="bg-gray-950/40 text-sm text-gray-100">
             {transactions.map(transaction => (
-              <tr key={transaction.id} className="border-t border-gray-900/40">
+              <tr
+                key={transaction.id}
+                className="border-t border-gray-900/40"
+                data-testid={`transaction-row-${transaction.symbol}-${transaction.type.toLowerCase()}`}
+              >
                 <td className="px-6 py-4 text-gray-300">{formatDate(transaction.createdAt)}</td>
                 <td className="px-6 py-4">
                   <span

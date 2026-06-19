@@ -77,7 +77,11 @@ export default function PortfolioSummaryCards({ summary, loading }: Props) {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {cards.map(card => (
-          <div key={card.label} className="rounded-xl border border-gray-800 bg-gray-950/60 p-5">
+          <div
+            key={card.label}
+            className="rounded-xl border border-gray-800 bg-gray-950/60 p-5"
+            data-testid={`portfolio-card-${card.label.toLowerCase().replaceAll(/[^a-z0-9]+/g, "-")}`}
+          >
             <p className="text-xs uppercase tracking-wide text-gray-500">{card.label}</p>
             {card.label === "Realised vs Unrealised" ? (
               // custom breakdown view
@@ -132,7 +136,9 @@ export default function PortfolioSummaryCards({ summary, loading }: Props) {
               </div>
             ) : (
               <>
-                <p className="mt-3 text-2xl font-semibold text-white">{card.value}</p>
+                <p className="mt-3 text-2xl font-semibold text-white" data-testid="portfolio-card-value">
+                  {card.value}
+                </p>
                 <p className="mt-2 text-sm text-gray-500">{card.helper}</p>
               </>
             )}

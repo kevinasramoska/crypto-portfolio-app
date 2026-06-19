@@ -136,4 +136,39 @@ class MarketDataServiceImplTest {
                 eq(Map.class)
         );
     }
+
+    @Test
+    void getSupportedCoins_shouldReturnCanonicalMappings() {
+        assertTrue(marketDataService.getSupportedCoins().stream()
+                .anyMatch(coin ->
+                        coin.symbol().equals("BTC")
+                                && coin.name().equals("Bitcoin")
+                                && coin.coinGeckoId().equals("bitcoin")
+                ));
+        assertTrue(marketDataService.getSupportedCoins().stream()
+                .anyMatch(coin ->
+                        coin.symbol().equals("BNB")
+                                && coin.coinGeckoId().equals("binancecoin")
+                ));
+    }
+
+    @Test
+    void getCurrentPrices_shouldOmitUnsupportedSymbols() {
+        when(restTemplate.getForObject(anyString(), eq(Map.class)))
+                .thenReturn(Map.of("bitcoin", Map.of("usd", 60000)));
+
+        Map<String, BigDecimal> prices = marketDataService.getCurrentPrices(List.of("BTC", "UNKNOWN"));
+
+        assertEquals(new BigDecimal("60000"), prices.get("BTC"));
+        assertFalse(prices.containsKey("UNKNOWN"));
+        verify(restTemplate, times(1)).getForObject(anyString(), eq(Map.class));
+    }
+
+    @Test
+    void getCurrentPrice_shouldReturnZeroForUnsupportedSymbol() {
+        BigDecimal price = marketDataService.getCurrentPrice("UNKNOWN");
+
+        assertEquals(BigDecimal.ZERO, price);
+        verify(restTemplate, never()).getForObject(anyString(), eq(Map.class));
+    }
 }

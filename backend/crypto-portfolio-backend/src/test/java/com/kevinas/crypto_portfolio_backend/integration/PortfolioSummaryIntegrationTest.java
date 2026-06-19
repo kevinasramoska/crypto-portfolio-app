@@ -98,4 +98,38 @@ class PortfolioSummaryIntegrationTest {
                 .andExpect(jsonPath("$.holdings").isArray())
                 .andExpect(jsonPath("$.holdings").isNotEmpty());
     }
+
+    @Test
+    void summary_shouldExposeMarketAvailabilityFlags_whenPriceIsUnavailable() throws Exception {
+        String token = getJwtToken("unsupportedsummary@example.com", "password");
+
+        when(marketDataService.getCurrentPrice("VET")).thenReturn(BigDecimal.ZERO);
+
+        TransactionRequest vetBuy = new TransactionRequest(
+                "VET",
+                "VeChain",
+                TransactionType.BUY,
+                new BigDecimal("10.00000000"),
+                new BigDecimal("2.50")
+        );
+
+        mockMvc.perform(post("/api/transactions")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(vetBuy)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/portfolio/summary")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hasUnsupportedMarketData").value(true))
+                .andExpect(jsonPath("$.totalInvestedUsd").value(25.00))
+                .andExpect(jsonPath("$.totalCurrentValueUsd").value(0.00))
+                .andExpect(jsonPath("$.totalUnrealisedProfitLossUsd").value(0.00))
+                .andExpect(jsonPath("$.holdings[0].symbol").value("VET"))
+                .andExpect(jsonPath("$.holdings[0].marketPriceAvailable").value(false))
+                .andExpect(jsonPath("$.holdings[0].currentPriceUsd").value(0.00))
+                .andExpect(jsonPath("$.holdings[0].currentValueUsd").value(0.00))
+                .andExpect(jsonPath("$.holdings[0].unrealisedProfitLossUsd").value(0.00));
+    }
 }

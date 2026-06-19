@@ -11,33 +11,12 @@ import PriceTable from "@/components/PriceTable";
 import TransactionSummaryCards from "@/components/TransactionSummaryCards";
 import TransactionsTable from "@/components/TransactionsTable";
 import WatchlistControls from "@/components/WatchlistControls";
-import {
-  createTransaction,
-  getHoldings,
-  getPortfolioPerformanceHistory,
-  getPortfolioSummary,
-  getPrices,
-  getTransactionSummary,
-  getTransactionsPaginated,
-  AUTH_REQUIRED_MESSAGE,
-} from "@/lib/api";
-import {
-  Holding,
-  PerformanceRange,
-  PortfolioPerformanceHistory,
-  PortfolioSummary,
-  PriceMap,
-  Transaction,
-  TransactionPayload,
-  TransactionSummary,
-} from "@/lib/types";
+import { getPrices } from "@/lib/api";
+import { useDashboardData } from "@/hooks/useDashboardData";
+import { Holding, PriceMap } from "@/lib/types";
 
 const DEFAULT_WATCHLIST = ["BTC", "ETH", "SOL", "LINK", "DOGE"];
 const WATCHLIST_STORAGE_KEY = "crypto-dashboard-watchlist";
-
-function isAuthError(error: unknown) {
-  return error instanceof Error && error.message === AUTH_REQUIRED_MESSAGE;
-}
 
 function formatTimestamp(date: Date | null): { absolute: string; relative: string } | null {
   if (!date) return null;
@@ -77,32 +56,36 @@ export default function DashboardPage() {
   const [lastPriceUpdated, setLastPriceUpdated] = useState<Date | null>(null);
   const [watchlist, setWatchlist] = useState<string[]>(DEFAULT_WATCHLIST);
   const [watchlistHydrated, setWatchlistHydrated] = useState(false);
-
-  const [holdings, setHoldings] = useState<Holding[]>([]);
-  const [portfolioSummary, setPortfolioSummary] = useState<PortfolioSummary | null>(null);
-  const [lastPortfolioUpdated, setLastPortfolioUpdated] = useState<Date | null>(null);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [transactionSummary, setTransactionSummary] = useState<TransactionSummary | null>(null);
-  const [performanceHistory, setPerformanceHistory] = useState<PortfolioPerformanceHistory | null>(null);
-  const [performanceRange, setPerformanceRange] = useState<PerformanceRange>("30d");
-
-  const [portfolioDataLoading, setPortfolioDataLoading] = useState(true);
-  const [portfolioDataError, setPortfolioDataError] = useState<string | null>(null);
-  const [portfolioRequiresAuth, setPortfolioRequiresAuth] = useState(false);
-  const [transactionLoading, setTransactionLoading] = useState(true);
-  const [transactionError, setTransactionError] = useState<string | null>(null);
-  const [performanceLoading, setPerformanceLoading] = useState(true);
-  const [performanceError, setPerformanceError] = useState<string | null>(null);
   const [symbolFilter, setSymbolFilter] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("value");
-
-  // Pagination state
-  const [transactionPageNumber, setTransactionPageNumber] = useState(0);
-  const [transactionPageSize] = useState(20);
-  const [transactionTotalElements, setTransactionTotalElements] = useState(0);
-  const [transactionTotalPages, setTransactionTotalPages] = useState(0);
-  const [transactionHasNext, setTransactionHasNext] = useState(false);
-  const [transactionHasPrevious, setTransactionHasPrevious] = useState(false);
+  const {
+    holdings,
+    portfolioSummary,
+    lastPortfolioUpdated,
+    transactions,
+    transactionSummary,
+    performanceHistory,
+    performanceRange,
+    setPerformanceRange,
+    portfolioDataLoading,
+    portfolioDataError,
+    portfolioRequiresAuth,
+    transactionLoading,
+    transactionError,
+    exportTransactionsLoading,
+    performanceLoading,
+    performanceError,
+    transactionPageNumber,
+    transactionPageSize,
+    transactionTotalElements,
+    transactionTotalPages,
+    transactionHasNext,
+    transactionHasPrevious,
+    refreshDashboard,
+    handleCreateTransaction,
+    handleTransactionPageChange,
+    handleExportTransactions,
+  } = useDashboardData();
 
   const displayHoldings = useMemo(() => {
     const normalizedFilter = symbolFilter.trim().toLowerCase();
@@ -163,106 +146,6 @@ export default function DashboardPage() {
     }
   }, [watchlist]);
 
-  const loadPortfolioData = useCallback(async () => {
-    try {
-      setPortfolioDataLoading(true);
-      setPortfolioDataError(null);
-
-      const [holdingsData, summaryData] = await Promise.all([
-        getHoldings(),
-        getPortfolioSummary(),
-      ]);
-
-      setHoldings(holdingsData);
-      setPortfolioSummary(summaryData);
-      setLastPortfolioUpdated(new Date());
-      setPortfolioRequiresAuth(false);
-    } catch (error) {
-      console.error("Error loading portfolio data", error);
-      if (isAuthError(error)) {
-        setPortfolioDataError("Login to view your portfolio.");
-        setPortfolioRequiresAuth(true);
-      } else {
-        setPortfolioDataError("Unable to load your portfolio right now.");
-      }
-      setHoldings([]);
-      setPortfolioSummary(null);
-      setLastPortfolioUpdated(null);
-    } finally {
-      setPortfolioDataLoading(false);
-    }
-  }, []);
-
-  const loadTransactionData = useCallback(async () => {
-    try {
-      setTransactionLoading(true);
-      setTransactionError(null);
-
-      const [paginatedData, transactionSummaryData] = await Promise.all([
-        getTransactionsPaginated(transactionPageNumber, transactionPageSize),
-        getTransactionSummary(),
-      ]);
-
-      setTransactions(paginatedData.content);
-      setTransactionTotalElements(paginatedData.totalElements);
-      setTransactionTotalPages(paginatedData.totalPages);
-      setTransactionHasNext(paginatedData.hasNext);
-      setTransactionHasPrevious(paginatedData.hasPrevious);
-      setTransactionSummary(transactionSummaryData);
-    } catch (error) {
-      console.error("Error loading transaction data", error);
-      if (isAuthError(error)) {
-        setTransactionError("Login to view your transactions.");
-        setPortfolioDataError("Login to view your portfolio.");
-        setPortfolioRequiresAuth(true);
-      } else {
-        setTransactionError("Unable to load transactions right now.");
-      }
-      setTransactions([]);
-      setTransactionSummary(null);
-    } finally {
-      setTransactionLoading(false);
-    }
-  }, [transactionPageNumber, transactionPageSize]);
-
-  const loadPerformanceData = useCallback(async () => {
-    try {
-      setPerformanceLoading(true);
-      setPerformanceError(null);
-
-      const performanceData = await getPortfolioPerformanceHistory(performanceRange);
-      setPerformanceHistory(performanceData);
-    } catch (error) {
-      console.error("Error loading performance history", error);
-      if (isAuthError(error)) {
-        setPerformanceError("Login to view performance history.");
-        setPortfolioDataError("Login to view your portfolio.");
-        setPortfolioRequiresAuth(true);
-      } else {
-        setPerformanceError("Unable to load performance history right now.");
-      }
-      setPerformanceHistory(null);
-    } finally {
-      setPerformanceLoading(false);
-    }
-  }, [performanceRange]);
-
-  const refreshDashboard = useCallback(async () => {
-    await Promise.all([
-      loadPortfolioData(),
-      loadTransactionData(),
-      loadPerformanceData(),
-    ]);
-  }, [loadPerformanceData, loadPortfolioData, loadTransactionData]);
-
-  const handleCreateTransaction = useCallback(
-    async (payload: TransactionPayload) => {
-      await createTransaction(payload);
-      await Promise.all([refreshDashboard(), loadPrices()]);
-    },
-    [loadPrices, refreshDashboard]
-  );
-
   const handleAddWatchlist = useCallback(
     (input: string) => {
       const normalized = input.trim().toUpperCase();
@@ -279,25 +162,12 @@ export default function DashboardPage() {
     setWatchlist(prev => prev.filter(item => item !== symbol));
   }, []);
 
-  const handleTransactionPageChange = useCallback((newPage: number) => {
-    setTransactionPageNumber(newPage);
-  }, []);
-
   useEffect(() => {
     if (!watchlistHydrated) return;
     loadPrices();
     const interval = setInterval(loadPrices, 10000);
     return () => clearInterval(interval);
   }, [loadPrices, watchlistHydrated]);
-
-  useEffect(() => {
-    loadPortfolioData();
-    loadTransactionData();
-  }, [loadPortfolioData, loadTransactionData]);
-
-  useEffect(() => {
-    loadPerformanceData();
-  }, [loadPerformanceData]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -448,7 +318,10 @@ export default function DashboardPage() {
               />
             </div>
 
-            <AddTransactionForm onSubmit={handleCreateTransaction} disabled={portfolioDataLoading || transactionLoading} />
+            <AddTransactionForm
+              onSubmit={payload => handleCreateTransaction(payload, loadPrices)}
+              disabled={portfolioDataLoading || transactionLoading}
+            />
           </section>
 
           <section className="space-y-6">
@@ -482,6 +355,8 @@ export default function DashboardPage() {
               transactions={transactions}
               loading={transactionLoading}
               error={transactionError}
+              exportLoading={exportTransactionsLoading}
+              onExportCsv={handleExportTransactions}
               pageNumber={transactionPageNumber}
               pageSize={transactionPageSize}
               totalElements={transactionTotalElements}

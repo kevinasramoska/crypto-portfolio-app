@@ -1,5 +1,7 @@
 package com.kevinas.crypto_portfolio_backend.service;
 
+import com.kevinas.crypto_portfolio_backend.dto.SupportedCoinResponse;
+import com.kevinas.crypto_portfolio_backend.util.CoinGeckoSymbolMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -24,21 +26,6 @@ public class MarketDataServiceImpl implements MarketDataService {
     private static final Duration CACHE_TTL = Duration.ofSeconds(60);
 
     private final Map<String, CachedPrice> priceCache = new ConcurrentHashMap<>();
-
-    private static final Map<String, String> SYMBOL_TO_COINGECKO_ID = Map.ofEntries(
-            Map.entry("BTC", "bitcoin"),
-            Map.entry("ETH", "ethereum"),
-            Map.entry("SOL", "solana"),
-            Map.entry("ADA", "cardano"),
-            Map.entry("XRP", "ripple"),
-            Map.entry("DOGE", "dogecoin"),
-            Map.entry("DOT", "polkadot"),
-            Map.entry("AVAX", "avalanche-2"),
-            Map.entry("MATIC", "matic-network"),
-            Map.entry("LINK", "chainlink"),
-            Map.entry("LTC", "litecoin"),
-            Map.entry("BNB", "binancecoin")
-    );
 
     public MarketDataServiceImpl(
             RestTemplate restTemplate,
@@ -83,7 +70,7 @@ public class MarketDataServiceImpl implements MarketDataService {
                 continue;
             }
 
-            String coinId = SYMBOL_TO_COINGECKO_ID.get(upper);
+            String coinId = CoinGeckoSymbolMapper.map(upper);
             if (coinId != null) {
                 symbolToIdToRefresh.put(upper, coinId);
             } else {
@@ -98,6 +85,13 @@ public class MarketDataServiceImpl implements MarketDataService {
         applyFallbackFromCache(symbols, result);
 
         return result;
+    }
+
+    @Override
+    public List<SupportedCoinResponse> getSupportedCoins() {
+        return CoinGeckoSymbolMapper.getSupportedCoins().stream()
+                .map(coin -> new SupportedCoinResponse(coin.symbol(), coin.name(), coin.coinGeckoId()))
+                .toList();
     }
 
     private void refreshPrices(

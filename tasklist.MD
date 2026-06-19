@@ -141,13 +141,14 @@ Use this as a working backlog for the crypto portfolio tracker. Tasks are groupe
   - Files likely involved: `TransactionController.java`, `TransactionRepository.java`, `TransactionsTable.tsx`, `api.ts`
   - Status: Completed. Backend endpoints support paginated queries with page/size parameters. Frontend includes pagination controls with previous/next navigation. Default page size is 20. All tests pass.
 
-- [ ] Add asset allocation summary
+- [x] Add asset allocation summary
   - Description: Show each holding’s share of total portfolio value.
   - Why it matters: Useful portfolio insight from existing holdings data.
   - Complexity: Low
   - Risk: Low
   - Priority: P3
   - Files likely involved: `dashboard/page.tsx`, new component
+  - Status: Completed. `dashboard/page.tsx` renders an `Asset allocation` section and `AssetAllocationSummary.tsx` shows each priced holding's share of known portfolio value, excluding unsupported-market-data holdings with a warning.
 
 ## Feature Ideas
 
@@ -169,71 +170,79 @@ Use this as a working backlog for the crypto portfolio tracker. Tasks are groupe
    - Files likely involved: `PortfolioSummaryCards.tsx`
    - Status: Completed. Added a "Realised vs Unrealised" card showing a stacked bar and numeric breakdown in `PortfolioSummaryCards.tsx`.
 
-- [ ] Add supported coin list endpoint
+- [x] Add supported coin list endpoint
   - Description: Expose backend-supported CoinGecko mappings to the frontend.
   - Why it matters: Prevents frontend/backend supported-symbol drift.
   - Complexity: Medium
   - Risk: Medium
   - Priority: P3
   - Files likely involved: `MarketDataController.java`, `MarketDataServiceImpl.java`, `api.ts`, `AddTransactionForm.tsx`
+  - Status: Completed. Added `GET /api/market/supported-coins`, centralized supported coin mappings in the backend, and updated `AddTransactionForm.tsx` to load the backend list with a frontend fallback.
 
-- [ ] Add CSV export for transactions
+- [x] Add CSV export for transactions
   - Description: Let the user download transaction history as CSV.
   - Why it matters: Practical for personal finance records.
   - Complexity: Medium
   - Risk: Low
   - Priority: P3
   - Files likely involved: `TransactionsTable.tsx`, possibly a backend endpoint
+  - Status: Completed. Added an `Export CSV` action in `TransactionsTable.tsx` and on-demand full-history CSV generation in `dashboard/page.tsx` using the existing transactions API.
 
-- [ ] Add scheduled portfolio snapshots
+- [x] Add scheduled portfolio snapshots
   - Description: Create portfolio snapshots periodically, not only after transactions.
   - Why it matters: Makes performance history useful even without frequent trades.
   - Complexity: Medium
   - Risk: Medium
   - Priority: P3
   - Files likely involved: `PriceUpdateScheduler.java`, `SchedulerConfig.java`, `PortfolioServiceImpl.java`
+  - Status: Completed. Enabled scheduling, repurposed `PriceUpdateScheduler.java` to capture daily snapshots across users, and reused `PortfolioHistoryServiceImpl` to skip duplicate same-day snapshots and users with no transaction history.
 
 ## Documentation
 
-- [ ] Rewrite root README
+- [x] Rewrite root README
   - Description: Document full-stack setup, actual endpoints, current frontend features, and local commands.
   - Why it matters: Current README is backend-focused and partly outdated.
   - Complexity: Medium
   - Risk: Low
   - Priority: P0
   - Files likely involved: `README.md`
+  - Status: Completed. Rewrote the root README around current full-stack setup, local commands, frontend features, API contracts, troubleshooting, environment variables, and known limitations.
 
-- [ ] Add environment examples
+- [x] Add environment examples
   - Description: Add example env files for backend and frontend without real secrets.
   - Why it matters: Makes setup repeatable.
   - Complexity: Low
   - Risk: Low
   - Priority: P1
   - Files likely involved: `.env.example`, `frontend/frontend/.env.example`, docs
+  - Status: Completed. Added a root `.env.example` for backend/full-stack local values and clarified the existing frontend `.env.example`.
 
-- [ ] Add API reference table
+- [x] Add API reference table
   - Description: Document actual endpoints, methods, auth requirements, and request/response shapes.
   - Why it matters: Prevents frontend/backend contract drift.
   - Complexity: Low
   - Risk: Low
   - Priority: P1
   - Files likely involved: `README.md`, `REPO_OVERVIEW.md`
+  - Status: Completed. Added a current API reference table to the README covering auth, market, portfolio, transaction, paginated transaction, and performance-history endpoints with auth and response-shape notes.
 
-- [ ] Add local troubleshooting guide
+- [x] Add local troubleshooting guide
   - Description: Document DB connection issues, port conflicts, JWT secret problems, and CoinGecko limitations.
   - Why it matters: Helps restart the project quickly after time away.
   - Complexity: Low
   - Risk: Low
   - Priority: P2
   - Files likely involved: `README.md`
+  - Status: Completed. Added troubleshooting entries for database connection issues, Flyway/schema confusion, port conflicts, JWT secret length, CoinGecko limitations, frontend/backend connectivity, and Playwright browser setup.
 
-- [ ] Document known limitations
+- [x] Document known limitations
   - Description: List supported symbols, missing frontend tests, snapshot behavior, and local-only assumptions.
   - Why it matters: Makes gaps explicit.
   - Complexity: Low
   - Risk: Low
   - Priority: P2
   - Files likely involved: `README.md`, `REPO_OVERVIEW.md`
+  - Status: Completed. Updated known limitations in the README and refreshed stale overview notes around frontend tests, snapshots, config, supported symbols, and local-only assumptions.
 
 ## Testing
 
@@ -245,45 +254,50 @@ Use this as a working backlog for the crypto portfolio tracker. Tasks are groupe
   - Priority: P0
   - Files likely involved: `backend/crypto-portfolio-backend/src/test/**`
 
-- [ ] Add frontend smoke tests
+- [x] Add frontend smoke tests
   - Description: Add tests for dashboard render, auth forms, and transaction form validation.
   - Why it matters: Frontend currently has no tests.
   - Complexity: Medium
   - Risk: Medium
   - Priority: P1
   - Files likely involved: `frontend/frontend/src/**`, `frontend/frontend/package.json`
+  - Status: Completed with a minimal Vitest + Testing Library setup and smoke coverage for dashboard rendering, login/register form behavior, and transaction form validation.
 
-- [ ] Add API client tests
+- [x] Add API client tests
   - Description: Test auth error handling and response parsing in `api.ts`.
   - Why it matters: Protects the frontend/backend API contract.
   - Complexity: Medium
   - Risk: Low
   - Priority: P2
   - Files likely involved: `frontend/frontend/src/lib/api.ts`
+  - Status: Completed with `api.test.ts` coverage for 401 auth-session clearing, holdings number coercion, and transaction error-message parsing/fallback behavior.
 
-- [ ] Add backend test for unsupported market symbols
+- [x] Add backend test for unsupported market symbols
   - Description: Confirm unknown symbols return expected behavior.
   - Why it matters: Clarifies how the UI should handle unsupported coins.
   - Complexity: Low
   - Risk: Low
   - Priority: P2
   - Files likely involved: `MarketDataServiceImplTest.java`
+  - Status: Completed with test coverage showing unsupported symbols are omitted from `getCurrentPrices()` results and return `BigDecimal.ZERO` from `getCurrentPrice()`.
 
-- [ ] Add backend test for portfolio market-data availability flags
+- [x] Add backend test for portfolio market-data availability flags
   - Description: Confirm unsupported symbols set `marketPriceAvailable=false` and `hasUnsupportedMarketData=true`.
   - Why it matters: Protects the new contract that prevents misleading zero-value portfolio display.
   - Complexity: Low
   - Risk: Low
   - Priority: P2
   - Files likely involved: `PortfolioServiceImplTest.java`, `PortfolioSummaryIntegrationTest.java`
+  - Status: Completed with unit and integration coverage confirming unsupported prices set holding-level `marketPriceAvailable=false` and portfolio-level `hasUnsupportedMarketData=true`.
 
-- [ ] Add backend performance history integration test
+- [x] Add backend performance history integration test
   - Description: Confirm snapshots are created after transactions and returned by range.
   - Why it matters: Snapshot creation is best-effort and can silently fail.
   - Complexity: Medium
   - Risk: Low
   - Priority: P2
   - Files likely involved: `PortfolioPerformanceHistoryIntegrationTest.java`, `TransactionControllerIntegrationTest.java`
+  - Status: Completed. `PortfolioPerformanceHistoryIntegrationTest.java` already verifies that transaction creation persists a snapshot and that `/api/portfolio/performance/history?range=7d` returns it.
 
 - [ ] Add full-stack happy-path test
   - Description: Register, login, create transaction, and verify dashboard data.
@@ -295,13 +309,14 @@ Use this as a working backlog for the crypto portfolio tracker. Tasks are groupe
 
 ## Refactoring
 
-- [ ] Consolidate backend configuration
+- [x] Consolidate backend configuration
   - Description: Decide whether `application.yaml` or `application.properties` is the source of truth.
   - Why it matters: Overlapping config makes runtime behavior confusing.
   - Complexity: Low
   - Risk: Medium
   - Priority: P1
   - Files likely involved: `application.yaml`, `application.properties`
+  - Status: Completed. Consolidated backend runtime settings into `application.yaml` and removed the overlapping `application.properties` file so YAML is the single source of truth.
 
 - [x] Use configured CoinGecko base URL
   - Description: Replace hardcoded CoinGecko URL in `MarketDataServiceImpl` with `crypto.api.base-url`.
@@ -311,42 +326,47 @@ Use this as a working backlog for the crypto portfolio tracker. Tasks are groupe
   - Priority: P1
   - Files likely involved: `MarketDataServiceImpl.java`, `application.yaml`
 
-- [ ] Remove or use WebClient config
+- [x] Remove or use WebClient config
   - Description: Either switch market calls to `WebClient` or remove the unused WebClient setup/dependency.
   - Why it matters: Reduces unused abstractions and dependencies.
   - Complexity: Medium
   - Risk: Medium
   - Priority: P2
   - Files likely involved: `WebClientConfig.java`, `pom.xml`, `MarketDataServiceImpl.java`
+  - Status: Completed. Removed the unused `WebClientConfig.java` bean and `spring-boot-starter-webclient` dependency because market data already uses `RestTemplate` via `AppConfig.java`.
 
-- [ ] Clarify holdings source of truth
+- [x] Clarify holdings source of truth
   - Description: Decide whether holdings should remain stored state or be derived entirely from transactions.
   - Why it matters: Current code stores holdings and transactions, which can drift.
   - Complexity: High
   - Risk: High
   - Priority: P2
   - Files likely involved: `HoldingRepository.java`, `TransactionServiceImpl.java`, `PortfolioServiceImpl.java`, migrations, tests
+  - Status: Completed. Clarified and aligned the design so `holdings` is the source of truth for current open positions, while `transactions` remains the audit log and realised-P/L source. `PortfolioServiceImpl` now reads current positions from `HoldingRepository` instead of rebuilding them from transaction history.
 
-- [ ] Clean up empty migration
+- [x] Clean up empty migration
   - Description: Document why `V2__transaction_constraints.sql` is empty or handle it safely.
   - Why it matters: Empty migrations confuse future schema work.
   - Complexity: Low
   - Risk: Medium
   - Priority: P2
   - Files likely involved: `V2__transaction_constraints.sql`, docs
+  - Status: Completed. Documented `V2__transaction_constraints.sql` as an intentional no-op placeholder retained to keep existing Flyway version history stable.
 
-- [ ] Extract dashboard data loading if it grows
+- [x] Extract dashboard data loading if it grows
   - Description: Move dashboard loading logic into smaller hooks/helpers once the page becomes harder to maintain.
   - Why it matters: Keeps dashboard code manageable.
   - Complexity: Medium
   - Risk: Medium
   - Priority: P3
   - Files likely involved: `dashboard/page.tsx`, possible hooks/helpers
+  - Status: Completed. Extracted the dashboard's backend data loading, pagination, refresh, transaction-save, and CSV export logic into `useDashboardData.ts`, leaving `dashboard/page.tsx` focused on UI composition and local watchlist/filter state.
 
-- [ ] Align frontend dependency versions
+- [x] Align frontend dependency versions
   - Description: Review Next, React type packages, and `eslint-config-next` versions.
   - Why it matters: Avoids tooling friction.
   - Complexity: Medium
   - Risk: Medium
   - Priority: P3
   - Files likely involved: `frontend/frontend/package.json`, `frontend/frontend/package-lock.json`
+  - Status: Completed. Reviewed the installed frontend dependency graph, kept the React 19 runtime/types alignment, and pinned `next` to `16.2.9` so it stays in lockstep with `eslint-config-next@16.2.9`.

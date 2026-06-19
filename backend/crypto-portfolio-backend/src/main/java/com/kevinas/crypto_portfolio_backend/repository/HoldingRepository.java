@@ -8,8 +8,8 @@ import java.util.List;
 import java.util.Optional;
 
 public interface HoldingRepository extends JpaRepository<Holding, Long> {
-    // TODO: Consider deriving holdings entirely from transactions to eliminate duplication and ensure consistency.
-    // For now, holdings remain as stored state, updated by TransactionService to support getUserHoldings.
+    // Current-position source of truth: holdings are stored state maintained by TransactionService.
+    // Transaction history remains the audit log and realised P/L source.
     List<Holding> findByUser(User user);
     Optional<Holding> findByUserAndCoin_SymbolIgnoreCase(User user, String symbol);
 }

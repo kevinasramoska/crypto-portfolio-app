@@ -1,8 +1,9 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import { getSupportedCoins } from "@/lib/api";
 import { SUPPORTED_COIN_PRESETS } from "@/lib/supportedCoins";
-import { TransactionPayload, TransactionType } from "@/lib/types";
+import { SupportedCoin, TransactionPayload, TransactionType } from "@/lib/types";
 
 type Props = {
   onSubmit: (payload: TransactionPayload) => Promise<void>;
@@ -15,12 +16,36 @@ const SYMBOL_PATTERN = /^[A-Z0-9]{2,10}$/;
 export default function AddTransactionForm({ onSubmit, disabled }: Props) {
   const [type, setType] = useState<TransactionType>("BUY");
   const [selectedCoin, setSelectedCoin] = useState(CUSTOM_COIN_VALUE);
+  const [supportedCoins, setSupportedCoins] = useState<SupportedCoin[]>(SUPPORTED_COIN_PRESETS);
   const [symbol, setSymbol] = useState("");
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("");
   const [priceUsd, setPriceUsd] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSupportedCoins() {
+      try {
+        const coins = await getSupportedCoins();
+        if (!cancelled && coins.length > 0) {
+          setSupportedCoins(coins);
+        }
+      } catch {
+        if (!cancelled) {
+          setSupportedCoins(SUPPORTED_COIN_PRESETS);
+        }
+      }
+    }
+
+    void loadSupportedCoins();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function resetForm() {
     setType("BUY");
@@ -40,7 +65,7 @@ export default function AddTransactionForm({ onSubmit, disabled }: Props) {
       return;
     }
 
-    const preset = SUPPORTED_COIN_PRESETS.find(coin => coin.symbol === value);
+    const preset = supportedCoins.find(coin => coin.symbol === value);
     if (preset) {
       setSymbol(preset.symbol);
       setName(preset.name);
@@ -134,7 +159,7 @@ export default function AddTransactionForm({ onSubmit, disabled }: Props) {
             disabled={disabled || loading}
           >
             <option value={CUSTOM_COIN_VALUE}>Custom / manual entry</option>
-            {SUPPORTED_COIN_PRESETS.map(coin => (
+            {supportedCoins.map(coin => (
               <option key={coin.symbol} value={coin.symbol}>
                 {coin.symbol} - {coin.name}
               </option>

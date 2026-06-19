@@ -15,6 +15,12 @@ public interface PortfolioHistoryService {
     void captureSnapshotForUser(Long userId);
 
     /**
+     * Captures a snapshot for each user with transaction history.
+     * Duplicate snapshots for the same day are skipped.
+     */
+    void captureSnapshotsForAllUsers();
+
+    /**
      * Retrieves portfolio history for the current authenticated user within the specified time range.
      * Supported ranges: "1W" (1 week), "1M" (1 month), "3M" (3 months), "6M" (6 months), "1Y" (1 year), "ALL"
      *

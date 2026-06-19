@@ -1,11 +1,13 @@
 package com.kevinas.crypto_portfolio_backend.service.impl;
 
 import com.kevinas.crypto_portfolio_backend.model.*;
+import com.kevinas.crypto_portfolio_backend.repository.TransactionRepository;
 import com.kevinas.crypto_portfolio_backend.repository.PortfolioSnapshotRepository;
 import com.kevinas.crypto_portfolio_backend.repository.UserRepository;
 import com.kevinas.crypto_portfolio_backend.service.PortfolioHistoryService;
 import com.kevinas.crypto_portfolio_backend.service.PortfolioService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -18,17 +20,34 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PortfolioHistoryServiceImpl implements PortfolioHistoryService {
 
     private final PortfolioService portfolioService;
     private final PortfolioSnapshotRepository portfolioSnapshotRepository;
     private final UserRepository userRepository;
+    private final TransactionRepository transactionRepository;
 
     @Override
     @Transactional
     public void captureSnapshotForUser(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        captureSnapshotIfEligible(user);
+    }
+
+    @Override
+    @Transactional
+    public void captureSnapshotsForAllUsers() {
+        userRepository.findAll().forEach(this::captureSnapshotIfEligible);
+    }
+
+    private void captureSnapshotIfEligible(User user) {
+        if (!transactionRepository.existsByUser(user)) {
+            log.debug("Skipping scheduled snapshot for user {} because no transactions exist", user.getId());
+            return;
+        }
 
         Instant startOfDay = Instant.now()
                 .atZone(ZoneId.systemDefault())

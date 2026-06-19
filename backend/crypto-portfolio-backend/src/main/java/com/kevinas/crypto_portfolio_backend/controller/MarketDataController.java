@@ -1,5 +1,6 @@
 package com.kevinas.crypto_portfolio_backend.controller;
 
+import com.kevinas.crypto_portfolio_backend.dto.SupportedCoinResponse;
 import com.kevinas.crypto_portfolio_backend.service.MarketDataService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -22,5 +23,10 @@ public class MarketDataController {
     @GetMapping("/prices")
     public ResponseEntity<Map<String, BigDecimal>> getPrices(@RequestParam List<String> symbols) {
         return ResponseEntity.ok(marketDataService.getCurrentPrices(symbols));
+    }
+
+    @GetMapping("/supported-coins")
+    public ResponseEntity<List<SupportedCoinResponse>> getSupportedCoins() {
+        return ResponseEntity.ok(marketDataService.getSupportedCoins());
     }
 }

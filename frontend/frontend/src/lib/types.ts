@@ -18,6 +18,12 @@ export type Holding = {
 
 export type PriceMap = Record<string, number>;
 
+export type SupportedCoin = {
+  symbol: string;
+  name: string;
+  coinGeckoId: string;
+};
+
 export type TransactionType = "BUY" | "SELL";
 
 export type Transaction = {

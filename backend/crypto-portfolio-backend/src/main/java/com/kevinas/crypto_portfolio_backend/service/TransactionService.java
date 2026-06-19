@@ -12,11 +12,12 @@ public interface TransactionService {
     /**
      * Creates a new transaction for the authenticated user.
      * Business rules enforced:
-     * - BUY: Increases the user's holding position, updating average buy price.
-     * - SELL: Cannot exceed available quantity in holdings.
+     * - BUY: Increases the user's stored holding position, updating average buy price.
+     * - SELL: Cannot exceed available quantity in stored holdings.
      * - Quantities are scaled to 8 decimal places.
      * - Monetary values are scaled to 2 decimal places.
      * - Creates coin if it doesn't exist.
+     * - Transactions are the audit log; holdings remain the source of truth for open positions.
      *
      * @param request the transaction request containing symbol, name, type, quantity, and priceUsd
      * @return the created transaction response

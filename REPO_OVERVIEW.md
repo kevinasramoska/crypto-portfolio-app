@@ -16,7 +16,7 @@ Recent dashboard reliability work added clearer unsupported market-data display,
 
 | Layer | Technology |
 |---|---|
-| Backend | Java 21, Spring Boot 3.5 |
+| Backend | Java 26, Spring Boot 4.1.0 |
 | API | Spring MVC REST controllers |
 | Security | Spring Security, JWT, BCrypt |
 | Database | PostgreSQL |
@@ -24,7 +24,7 @@ Recent dashboard reliability work added clearer unsupported market-data display,
 | Migrations | Flyway |
 | External API | CoinGecko |
 | Backend tests | JUnit 5, Spring Boot Test, MockMvc, Mockito, H2 |
-| Frontend | Next.js 14 App Router, React 18, TypeScript |
+| Frontend | Next.js 16.2.9 App Router, React 19.2.7, TypeScript |
 | Styling | Tailwind CSS |
 | Local infrastructure | Docker Compose, PostgreSQL, pgAdmin |
 
@@ -35,6 +35,7 @@ Recent dashboard reliability work added clearer unsupported market-data display,
 ├── README.md
 ├── REPO_OVERVIEW.md
 ├── tasklist.MD
+├── .env.example
 ├── backend/
 │   └── crypto-portfolio-backend/
 │       ├── pom.xml
@@ -52,7 +53,7 @@ Recent dashboard reliability work added clearer unsupported market-data display,
 │       │   └── CryptoPortfolioBackendApplication.java
 │       ├── src/main/resources/
 │       │   ├── application.yaml
-│       │   ├── application.properties
+│       │   ├── application-e2e.yaml
 │       │   ├── application-test.yaml
 │       │   └── db/migration/
 │       └── src/test/
@@ -62,10 +63,13 @@ Recent dashboard reliability work added clearer unsupported market-data display,
         ├── package.json
         ├── next.config.js
         ├── tsconfig.json
-        ├── tailwind.config.js
         ├── eslint.config.mjs
+        ├── postcss.config.js
+        ├── vitest.config.ts
+        ├── playwright.config.ts
         ├── src/app/
         ├── src/components/
+        ├── src/hooks/
         └── src/lib/
 ```
 
@@ -90,6 +94,7 @@ Important frontend folders:
 |---|---|
 | `src/app` | Next.js App Router pages and layouts |
 | `src/components` | Reusable React UI components |
+| `src/hooks` | Client-side data loading and reusable React hooks |
 | `src/lib` | API client, auth helpers, shared TypeScript types |
 | `public` | Static assets |
 
@@ -177,7 +182,7 @@ Authorization: Bearer <token>
 
 1. Authenticated user requests holdings or portfolio summary.
 2. Backend loads the current user from the Spring Security context.
-3. Backend reads transactions and/or holdings from the database.
+3. Backend reads stored holdings for open positions and transactions for realised P/L history.
 4. Backend fetches current market prices through `MarketDataService`.
 5. Backend calculates:
    - invested value
@@ -208,8 +213,8 @@ Authorization: Bearer <token>
 | `backend/crypto-portfolio-backend/pom.xml` | Backend dependencies and Maven build config |
 | `backend/crypto-portfolio-backend/docker-compose.yml` | Local PostgreSQL and pgAdmin setup |
 | `backend/crypto-portfolio-backend/src/main/resources/application.yaml` | Main backend env-based runtime configuration |
-| `backend/crypto-portfolio-backend/src/main/resources/application.properties` | Additional backend configuration |
 | `backend/crypto-portfolio-backend/src/main/resources/db/migration/V1__init_schema.sql` | Creates main database schema |
+| `backend/crypto-portfolio-backend/src/main/resources/db/migration/V2__transaction_constraints.sql` | Intentional no-op placeholder retained for Flyway version history |
 | `backend/crypto-portfolio-backend/src/main/resources/db/migration/V3__portfolio_snapshots.sql` | Creates portfolio snapshot table |
 | `CryptoPortfolioBackendApplication.java` | Backend application entry point |
 | `SecurityConfig.java` | Defines JWT security rules and public/protected endpoints |
@@ -225,6 +230,7 @@ Authorization: Bearer <token>
 | `frontend/frontend/src/lib/api.ts` | Frontend HTTP client |
 | `frontend/frontend/src/lib/auth.ts` | Token/profile localStorage helpers |
 | `frontend/frontend/src/app/dashboard/page.tsx` | Main dashboard screen |
+| `frontend/frontend/src/hooks/useDashboardData.ts` | Dashboard backend data loading, refresh, pagination, transaction save, and CSV export logic |
 
 Current market-data response additions:
 
@@ -233,6 +239,22 @@ Current market-data response additions:
 | Holding response | `marketPriceAvailable` | Indicates whether current price/value/P&L can be trusted for the holding |
 | Portfolio holding summary | `marketPriceAvailable` | Indicates whether summary values are based on supported market data |
 | Portfolio summary | `hasUnsupportedMarketData` | Indicates whether totals are partial because at least one holding has no market data |
+
+Current API endpoints:
+
+| Method | Endpoint | Auth | Purpose |
+|---|---|---:|---|
+| `POST` | `/api/auth/register` | No | Register and receive a JWT |
+| `POST` | `/api/auth/login` | No | Log in and receive a JWT |
+| `GET` | `/api/market/prices?symbols=BTC,ETH` | No | Fetch current prices for supported mapped symbols |
+| `GET` | `/api/market/supported-coins` | No | List backend-supported symbol/name/CoinGecko mappings |
+| `GET` | `/api/portfolio/holdings` | Yes | Return current stored holdings with market-data availability flags |
+| `GET` | `/api/portfolio/summary` | Yes | Return totals plus per-holding summary |
+| `GET` | `/api/portfolio/performance/history?range=30d` | Yes | Return snapshot history for `7d`, `30d`, or `90d` |
+| `POST` | `/api/transactions` | Yes | Create a `BUY` or `SELL` transaction |
+| `GET` | `/api/transactions` | Yes | Return all current-user transactions |
+| `GET` | `/api/transactions/paginated?page=0&size=20` | Yes | Return paginated current-user transactions |
+| `GET` | `/api/transactions/summary` | Yes | Return buy volume, sell volume, and realised P/L totals |
 
 ## 7. Development Commands
 
@@ -285,6 +307,13 @@ cd frontend/frontend
 npm run build
 ```
 
+### Run Frontend Tests
+
+```bash
+cd frontend/frontend
+npm test
+```
+
 ### Lint Frontend
 
 ```bash
@@ -311,12 +340,11 @@ The backend tests use:
 
 ### Run Frontend Checks
 
-There is currently no frontend test script in `frontend/frontend/package.json`.
-
 Available frontend quality checks:
 
 ```bash
 cd frontend/frontend
+npm test
 npm run lint
 npm run build
 ```
@@ -334,6 +362,9 @@ Backend environment variables:
 | `JWT_SECRET` | `change_this_in_real_env` | JWT signing secret |
 | `JWT_EXPIRATION_SECONDS` | `3600` | JWT lifetime |
 | `CRYPTO_API_BASE_URL` | `https://api.coingecko.com/api/v3` | Crypto market API base URL |
+| `SPRING_JPA_SHOW_SQL` | `true` | SQL logging toggle |
+| `PORTFOLIO_SNAPSHOT_FIXED_DELAY_MS` | `3600000` | Scheduled snapshot interval |
+| `PORTFOLIO_SNAPSHOT_INITIAL_DELAY_MS` | `300000` | Scheduled snapshot startup delay |
 
 Frontend environment variables:
 
@@ -347,17 +378,18 @@ Frontend environment variables:
 - Authentication is stateless and JWT-based.
 - Most protected backend endpoints rely on the authenticated user from Spring Security context.
 - Portfolio writes happen through transactions, not direct holding CRUD.
+- Stored holdings are the source of truth for current open positions; transactions are the audit log and realised-P/L source.
 - `GET /api/portfolio/holdings` exists, but backend `POST`, `PUT`, and `DELETE` endpoints for `/api/portfolio/holdings` are not currently present.
 - Backend prices and portfolio values are USD-oriented.
-- `V2__transaction_constraints.sql` exists but appears empty.
-- Both `application.yaml` and `application.properties` define backend configuration, so developers should check Spring config precedence before changing runtime settings.
-- Scheduler support is partially present, but scheduler classes are commented out.
+- `V2__transaction_constraints.sql` is intentionally a no-op placeholder retained to keep Flyway version history stable.
+- `application.yaml` is the source of truth for main backend runtime configuration.
+- Scheduled portfolio snapshots are enabled and configured through `PORTFOLIO_SNAPSHOT_*` environment variables.
 - Price refresh currently happens lazily through API calls and an in-memory cache.
-- Current supported market symbols are `BTC`, `ETH`, `SOL`, `ADA`, `XRP`, `DOGE`, `DOT`, `AVAX`, `MATIC`, `LINK`, `LTC`, and `BNB`.
+- Current supported market symbols are exposed by `GET /api/market/supported-coins`.
 - Unsupported symbols can still be recorded manually, but portfolio UI flags missing market data.
 - Dashboard protected API failures clear stale auth state when the backend returns `401` or `403`.
 - Dashboard portfolio, transaction, and performance-history sections now load and fail independently.
 - Local backend CORS currently allows `http://localhost:3000`.
 - No seed data is present.
-- No frontend tests are currently configured.
+- Frontend smoke and API-client tests are configured with Vitest and Testing Library.
 - This repository also exists locally at `/Users/kevinasramoska/Documents/GitHub/crypto-portfolio-app`; make sure commits are made from the intended checkout.

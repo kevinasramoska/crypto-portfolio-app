@@ -14,4 +14,5 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     List<Transaction> findByUser_IdOrderByCreatedAtAsc(Long userId);
     List<Transaction> findByUser_IdAndCoin_IdOrderByCreatedAtAsc(Long userId, Long coinId);
     Page<Transaction> findByUserOrderByCreatedAtDesc(User user, Pageable pageable);
+    boolean existsByUser(User user);
 }

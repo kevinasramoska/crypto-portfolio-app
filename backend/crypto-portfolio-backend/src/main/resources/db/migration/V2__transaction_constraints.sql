@@ -1,0 +1,4 @@
+-- Intentionally left as a no-op migration.
+-- This version number is retained so existing Flyway histories remain stable.
+-- The transaction constraints that were originally planned for V2 were never shipped
+-- as a standalone schema change before later migrations were added.

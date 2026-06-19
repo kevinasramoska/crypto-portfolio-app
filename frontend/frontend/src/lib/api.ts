@@ -7,6 +7,7 @@ import {
   PortfolioPerformanceHistory,
   PortfolioSummary,
   PriceMap,
+  SupportedCoin,
   Transaction,
   TransactionPayload,
   TransactionSummary,
@@ -68,6 +69,11 @@ function toNumber(value: number | string | null | undefined) {
 export async function getPrices(symbols: string[]): Promise<PriceMap> {
   const res = await fetch(`${API_BASE}/market/prices?symbols=${symbols.join(",")}`);
   return parseJson(res, "Failed to fetch prices");
+}
+
+export async function getSupportedCoins(): Promise<SupportedCoin[]> {
+  const res = await fetch(`${API_BASE}/market/supported-coins`);
+  return parseJson(res, "Failed to fetch supported coins");
 }
 
 export async function login(email: string, password: string): Promise<LoginResponse> {

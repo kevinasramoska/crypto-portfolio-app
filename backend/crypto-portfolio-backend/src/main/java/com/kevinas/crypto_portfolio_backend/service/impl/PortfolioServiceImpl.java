@@ -26,8 +26,6 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -115,10 +113,8 @@ public class PortfolioServiceImpl implements com.kevinas.crypto_portfolio_backen
     }
 
     private PortfolioSummaryResponse computePortfolioSummary(User user) {
+        List<Holding> holdings = holdingRepository.findByUser(user);
         List<Transaction> transactions = transactionRepository.findByUserOrderByCreatedAtAsc(user);
-
-        Map<Long, List<Transaction>> transactionsByCoin = transactions.stream()
-                .collect(Collectors.groupingBy(t -> t.getCoin().getId()));
 
         List<PortfolioHoldingSummaryResponse> holdingSummaries = new ArrayList<>();
         BigDecimal totalInvestedUsd = BigDecimal.ZERO;
@@ -126,35 +122,17 @@ public class PortfolioServiceImpl implements com.kevinas.crypto_portfolio_backen
         BigDecimal totalUnrealisedProfitLossUsd = BigDecimal.ZERO;
         boolean hasUnsupportedMarketData = false;
 
-        for (Map.Entry<Long, List<Transaction>> entry : transactionsByCoin.entrySet()) {
-            List<Transaction> coinTransactions = entry.getValue();
-            com.kevinas.crypto_portfolio_backend.model.Coin coin = coinTransactions.get(0).getCoin();
-
-            BigDecimal quantity = BigDecimal.ZERO;
-            BigDecimal costBasis = BigDecimal.ZERO;
-
-            for (Transaction tx : coinTransactions) {
-                if (tx.getType() == TransactionType.BUY) {
-                    quantity = quantity.add(tx.getQuantity());
-                    costBasis = costBasis.add(tx.getQuantity().multiply(tx.getPriceUsd()));
-                } else if (tx.getType() == TransactionType.SELL) {
-                    if (quantity.compareTo(tx.getQuantity()) >= 0) {
-                        BigDecimal proportion = tx.getQuantity().divide(quantity, 8, RoundingMode.HALF_UP);
-                        costBasis = costBasis.subtract(costBasis.multiply(proportion));
-                        quantity = quantity.subtract(tx.getQuantity());
-                    }
-                }
-            }
-
-            if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
+        for (Holding holding : holdings) {
+            if (holding.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
                 continue;
             }
 
-            BigDecimal averageBuyPriceUsd = costBasis.divide(quantity, 8, RoundingMode.HALF_UP);
-            PriceLookup currentPrice = lookupPrice(coin.getSymbol());
-            BigDecimal investedValueUsd = money(quantity.multiply(averageBuyPriceUsd));
+            PriceLookup currentPrice = lookupPrice(holding.getCoin().getSymbol());
+            BigDecimal investedValueUsd = money(
+                    holding.getQuantity().multiply(holding.getAverageBuyPriceUsd())
+            );
             BigDecimal currentValueUsd = currentPrice.available()
-                    ? money(quantity.multiply(currentPrice.price()))
+                    ? money(holding.getQuantity().multiply(currentPrice.price()))
                     : BigDecimal.ZERO.setScale(USD_SCALE, RoundingMode.HALF_UP);
             BigDecimal unrealisedProfitLossUsd = currentPrice.available()
                     ? money(currentValueUsd.subtract(investedValueUsd))
@@ -162,10 +140,10 @@ public class PortfolioServiceImpl implements com.kevinas.crypto_portfolio_backen
             hasUnsupportedMarketData = hasUnsupportedMarketData || !currentPrice.available();
 
             PortfolioHoldingSummaryResponse summary = PortfolioHoldingSummaryResponse.builder()
-                    .symbol(coin.getSymbol())
-                    .name(coin.getName())
-                    .quantity(scaleQty(quantity))
-                    .averageBuyPriceUsd(money(averageBuyPriceUsd))
+                    .symbol(holding.getCoin().getSymbol())
+                    .name(holding.getCoin().getName())
+                    .quantity(scaleQty(holding.getQuantity()))
+                    .averageBuyPriceUsd(money(holding.getAverageBuyPriceUsd()))
                     .currentPriceUsd(currentPrice.price())
                     .investedValueUsd(investedValueUsd)
                     .currentValueUsd(currentValueUsd)
