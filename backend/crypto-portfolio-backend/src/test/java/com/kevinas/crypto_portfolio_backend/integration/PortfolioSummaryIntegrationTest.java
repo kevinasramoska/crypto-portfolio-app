@@ -1,14 +1,15 @@
 package com.kevinas.crypto_portfolio_backend.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kevinas.crypto_portfolio_backend.config.TestConfig;
 import com.kevinas.crypto_portfolio_backend.dto.*;
         import com.kevinas.crypto_portfolio_backend.model.TransactionType;
 import com.kevinas.crypto_portfolio_backend.service.MarketDataService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -22,6 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(TestConfig.class)
 @ActiveProfiles("test")
 class PortfolioSummaryIntegrationTest {
 
@@ -31,7 +33,7 @@ class PortfolioSummaryIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @org.springframework.beans.factory.annotation.Autowired
     private MarketDataService marketDataService;
 
     private String getJwtToken(String email, String password) throws Exception {
