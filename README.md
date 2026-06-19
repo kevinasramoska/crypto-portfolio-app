@@ -8,7 +8,7 @@ The app is transaction-driven: users record `BUY` and `SELL` transactions, and t
 
 | Layer | Technology |
 |---|---|
-| Backend | Java 21, Spring Boot 3.5 |
+| Backend | Java 26, Spring Boot 4.1.0 |
 | API | Spring MVC REST controllers |
 | Security | Spring Security, JWT, BCrypt |
 | Database | PostgreSQL |
@@ -16,7 +16,7 @@ The app is transaction-driven: users record `BUY` and `SELL` transactions, and t
 | Migrations | Flyway |
 | Market data | CoinGecko |
 | Backend tests | JUnit 5, Spring Boot Test, MockMvc, Mockito, H2 |
-| Frontend | Next.js 14, React 18, TypeScript |
+| Frontend | Next.js 16.2.9, React 19.2.7, TypeScript |
 | Styling | Tailwind CSS |
 | Local infrastructure | Docker Compose, PostgreSQL, pgAdmin |
 
