@@ -82,7 +82,7 @@ export default function WatchlistControls({ watchlist, onAdd, onRemove, disabled
               id="watchlist-input"
               type="text"
               placeholder="BTC"
-              className="w-32 rounded-lg border border-gray-800 bg-gray-900/60 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-purple-500 focus:outline-none"
+              className="w-32 rounded-lg border border-gray-800 bg-gray-900/60 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-purple-500 focus:outline-hidden"
               value={input}
               onChange={event => setInput(event.target.value)}
               disabled={disabled}
@@ -104,7 +104,7 @@ export default function WatchlistControls({ watchlist, onAdd, onRemove, disabled
           </label>
           <select
             id="watchlist-dropdown"
-            className="w-full rounded-lg border border-gray-800 bg-gray-900/60 px-3 py-2 text-sm text-white focus:border-purple-500 focus:outline-none"
+            className="w-full rounded-lg border border-gray-800 bg-gray-900/60 px-3 py-2 text-sm text-white focus:border-purple-500 focus:outline-hidden"
             onChange={handleDropdownChange}
             disabled={disabled || availableSymbols.length === 0}
             defaultValue=""

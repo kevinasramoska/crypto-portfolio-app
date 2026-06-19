@@ -115,7 +115,7 @@ export default function AddTransactionForm({ onSubmit, disabled }: Props) {
         <label className="flex flex-col gap-2">
           <span className="text-sm text-gray-400">Type</span>
           <select
-            className="rounded-lg border border-gray-800 bg-gray-950/60 px-4 py-3 text-white focus:border-purple-500 focus:outline-none"
+            className="rounded-lg border border-gray-800 bg-gray-950/60 px-4 py-3 text-white focus:border-purple-500 focus:outline-hidden"
             value={type}
             onChange={event => setType(event.target.value as TransactionType)}
             disabled={disabled || loading}
@@ -128,7 +128,7 @@ export default function AddTransactionForm({ onSubmit, disabled }: Props) {
         <label className="flex flex-col gap-2">
           <span className="text-sm text-gray-400">Coin</span>
           <select
-            className="rounded-lg border border-gray-800 bg-gray-950/60 px-4 py-3 text-white focus:border-purple-500 focus:outline-none"
+            className="rounded-lg border border-gray-800 bg-gray-950/60 px-4 py-3 text-white focus:border-purple-500 focus:outline-hidden"
             value={selectedCoin}
             onChange={event => handleCoinSelect(event.target.value)}
             disabled={disabled || loading}
@@ -145,7 +145,7 @@ export default function AddTransactionForm({ onSubmit, disabled }: Props) {
         <label className="flex flex-col gap-2">
           <span className="text-sm text-gray-400">Symbol</span>
           <input
-            className="rounded-lg border border-gray-800 bg-gray-950/60 px-4 py-3 text-white placeholder:text-gray-600 focus:border-purple-500 focus:outline-none"
+            className="rounded-lg border border-gray-800 bg-gray-950/60 px-4 py-3 text-white placeholder:text-gray-600 focus:border-purple-500 focus:outline-hidden"
             placeholder="BTC"
             value={symbol}
             onChange={event => handleSymbolChange(event.target.value)}
@@ -157,7 +157,7 @@ export default function AddTransactionForm({ onSubmit, disabled }: Props) {
         <label className="flex flex-col gap-2">
           <span className="text-sm text-gray-400">Name</span>
           <input
-            className="rounded-lg border border-gray-800 bg-gray-950/60 px-4 py-3 text-white placeholder:text-gray-600 focus:border-purple-500 focus:outline-none"
+            className="rounded-lg border border-gray-800 bg-gray-950/60 px-4 py-3 text-white placeholder:text-gray-600 focus:border-purple-500 focus:outline-hidden"
             placeholder="Bitcoin"
             value={name}
             onChange={event => handleNameChange(event.target.value)}
@@ -169,7 +169,7 @@ export default function AddTransactionForm({ onSubmit, disabled }: Props) {
         <label className="flex flex-col gap-2">
           <span className="text-sm text-gray-400">Quantity</span>
           <input
-            className="rounded-lg border border-gray-800 bg-gray-950/60 px-4 py-3 text-white placeholder:text-gray-600 focus:border-purple-500 focus:outline-none"
+            className="rounded-lg border border-gray-800 bg-gray-950/60 px-4 py-3 text-white placeholder:text-gray-600 focus:border-purple-500 focus:outline-hidden"
             placeholder="0.5"
             value={quantity}
             onChange={event => setQuantity(event.target.value)}
@@ -181,7 +181,7 @@ export default function AddTransactionForm({ onSubmit, disabled }: Props) {
         <label className="flex flex-col gap-2 sm:col-span-2">
           <span className="text-sm text-gray-400">Price USD</span>
           <input
-            className="rounded-lg border border-gray-800 bg-gray-950/60 px-4 py-3 text-white placeholder:text-gray-600 focus:border-purple-500 focus:outline-none"
+            className="rounded-lg border border-gray-800 bg-gray-950/60 px-4 py-3 text-white placeholder:text-gray-600 focus:border-purple-500 focus:outline-hidden"
             placeholder="65000"
             value={priceUsd}
             onChange={event => setPriceUsd(event.target.value)}

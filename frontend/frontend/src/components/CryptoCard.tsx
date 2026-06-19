@@ -15,7 +15,7 @@ export default function CryptoCard({ symbol, price, loading, currency = "EUR", o
   });
 
   return (
-    <div className="relative rounded-xl bg-gray-900 text-white p-5 border border-gray-700 shadow">
+    <div className="relative rounded-xl bg-gray-900 text-white p-5 border border-gray-700 shadow-sm">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold">{symbol}</h2>
         {onRemove && (
@@ -30,7 +30,7 @@ export default function CryptoCard({ symbol, price, loading, currency = "EUR", o
         )}
       </div>
       {loading ? (
-        <div className="mt-4 h-8 w-32 rounded bg-gray-800 animate-pulse" />
+        <div className="mt-4 h-8 w-32 rounded-sm bg-gray-800 animate-pulse" />
       ) : hasPrice ? (
         <p className="text-3xl mt-2 text-purple-300">{formatter.format(price)}</p>
       ) : (

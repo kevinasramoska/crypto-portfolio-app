@@ -24,7 +24,7 @@ export default function HoldingsControls({ filter, sort, onFilterChange, onSortC
         <input
           type="text"
           placeholder="e.g. BTC"
-          className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-950/70 px-4 py-2.5 text-sm text-white placeholder:text-gray-500 focus:border-purple-500 focus:outline-none"
+          className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-950/70 px-4 py-2.5 text-sm text-white placeholder:text-gray-500 focus:border-purple-500 focus:outline-hidden"
           value={filter}
           onChange={event => onFilterChange(event.target.value)}
           disabled={disabled}
@@ -34,7 +34,7 @@ export default function HoldingsControls({ filter, sort, onFilterChange, onSortC
       <label className="sm:w-60">
         <span className="text-xs uppercase tracking-wide text-gray-500">Sort holdings</span>
         <select
-          className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-950/70 px-4 py-2.5 text-sm text-white focus:border-purple-500 focus:outline-none"
+          className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-950/70 px-4 py-2.5 text-sm text-white focus:border-purple-500 focus:outline-hidden"
           value={sort}
           onChange={event => onSortChange(event.target.value as SortKey)}
           disabled={disabled}
