@@ -15,9 +15,18 @@ export default function LoginPage() {
     event.preventDefault();
     setError(null);
 
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !password) {
+      setError("Email and password are required.");
+      return;
+    }
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+
     try {
       setLoading(true);
-      const trimmedEmail = email.trim();
       const res = await login(trimmedEmail, password);
       saveToken(res.accessToken);
       setActiveProfile(trimmedEmail);
@@ -30,17 +39,19 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white px-6">
-      <div className="bg-zinc-900 p-10 rounded-xl w-full max-w-md border border-zinc-800">
-        <h1 className="text-2xl font-bold mb-6 text-center">Login</h1>
+    <main className="flex min-h-[calc(100vh-8.5rem)] items-center justify-center px-4 py-12 sm:px-6">
+      <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-gray-950/70 p-6 shadow-2xl shadow-purple-950/20 sm:p-10">
+        <p className="text-center text-xs font-semibold uppercase tracking-[0.2em] text-purple-300">Welcome back</p>
+        <h1 className="mt-3 text-center text-3xl font-bold tracking-tight">Log in to your portfolio</h1>
+        <p className="mt-3 text-center text-sm leading-6 text-gray-400">Pick up where you left off with your saved holdings and transactions.</p>
 
-        <form className="space-y-4" onSubmit={handleLogin}>
+        <form className="mt-8 space-y-5" onSubmit={handleLogin} noValidate>
           <label className="block text-sm text-gray-400" htmlFor="email">
             Email
           </label>
           <input
             id="email"
-            className="w-full p-3 bg-zinc-800 rounded-sm border border-zinc-700"
+            className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-900/70 px-4 py-3 text-white placeholder:text-gray-500 focus:border-purple-400 focus:outline-hidden"
             placeholder="you@example.com"
             type="email"
             autoComplete="email"
@@ -54,33 +65,35 @@ export default function LoginPage() {
           </label>
           <input
             id="password"
-            className="w-full p-3 bg-zinc-800 rounded-sm border border-zinc-700"
+            className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-900/70 px-4 py-3 text-white placeholder:text-gray-500 focus:border-purple-400 focus:outline-hidden"
             placeholder="••••••••"
             type="password"
             autoComplete="current-password"
             value={password}
             onChange={event => setPassword(event.target.value)}
             required
+            minLength={8}
+            maxLength={72}
           />
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {error && <p className="text-sm text-red-300" role="alert">{error}</p>}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full p-3 bg-indigo-600 rounded-lg font-semibold hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            className="w-full rounded-lg bg-purple-600 px-4 py-3 font-semibold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? "Logging in..." : "Login"}
           </button>
         </form>
 
-        <p className="text-sm text-gray-400 text-center mt-6">
+        <p className="mt-6 text-center text-sm text-gray-400">
           Need an account?{" "}
-          <Link href="/register" className="text-indigo-400 hover:underline">
+          <Link href="/register" className="text-purple-300 hover:text-white hover:underline">
             Register
           </Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 }

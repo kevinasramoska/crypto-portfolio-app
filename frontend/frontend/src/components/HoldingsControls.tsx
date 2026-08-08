@@ -18,13 +18,13 @@ const SORT_OPTIONS: { label: string; value: SortKey }[] = [
 
 export default function HoldingsControls({ filter, sort, onFilterChange, onSortChange, disabled }: Props) {
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-gray-800 bg-gray-950/40 p-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-4 rounded-xl border border-gray-800 bg-gray-950/60 p-4 sm:flex-row sm:items-center sm:justify-between">
       <label className="flex-1">
         <span className="text-xs uppercase tracking-wide text-gray-500">Filter by symbol</span>
         <input
           type="text"
           placeholder="e.g. BTC"
-          className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-950/70 px-4 py-2.5 text-sm text-white placeholder:text-gray-500 focus:border-purple-500 focus:outline-hidden"
+          className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-900/70 px-4 py-2.5 text-sm text-white placeholder:text-gray-500 transition focus:border-purple-500 focus:outline-hidden focus:ring-2 focus:ring-purple-500/15"
           value={filter}
           onChange={event => onFilterChange(event.target.value)}
           disabled={disabled}
@@ -34,7 +34,7 @@ export default function HoldingsControls({ filter, sort, onFilterChange, onSortC
       <label className="sm:w-60">
         <span className="text-xs uppercase tracking-wide text-gray-500">Sort holdings</span>
         <select
-          className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-950/70 px-4 py-2.5 text-sm text-white focus:border-purple-500 focus:outline-hidden"
+          className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-900/70 px-4 py-2.5 text-sm text-white transition focus:border-purple-500 focus:outline-hidden focus:ring-2 focus:ring-purple-500/15"
           value={sort}
           onChange={event => onSortChange(event.target.value as SortKey)}
           disabled={disabled}

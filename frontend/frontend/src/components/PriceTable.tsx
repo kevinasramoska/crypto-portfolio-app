@@ -34,6 +34,12 @@ function formatMarketValue(holding: Holding, value: number, unavailableLabel: st
   return currencyFormatter.format(value);
 }
 
+function profitLossClass(value: number) {
+  if (value > 0) return "text-emerald-300";
+  if (value < 0) return "text-red-300";
+  return "text-gray-100";
+}
+
 export default function PriceTable({
   holdings,
   loading,
@@ -79,7 +85,7 @@ export default function PriceTable({
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-gray-800" data-testid="holdings-table">
+      <div className="overflow-x-auto rounded-xl border border-gray-800 bg-gray-950/40 shadow-sm" data-testid="holdings-table">
         <table className="w-full min-w-[860px] table-auto">
           <thead className="bg-gray-900/80 text-left text-xs uppercase tracking-wider text-gray-400">
             <tr>
@@ -94,21 +100,21 @@ export default function PriceTable({
           </thead>
           <tbody className="bg-gray-950/40 text-sm text-gray-100">
             {holdings.map(holding => (
-              <tr key={holding.id} className="border-t border-gray-900/40" data-testid={`holding-row-${holding.symbol}`}>
+              <tr key={holding.id} className="border-t border-gray-800/70 transition-colors hover:bg-purple-500/5" data-testid={`holding-row-${holding.symbol}`}>
                 <td className="px-6 py-4">
                   <div className="font-semibold">{holding.symbol}</div>
                   <div className="text-xs text-gray-500">{holding.name}</div>
                 </td>
-                <td className="px-6 py-4">{formatQuantity(holding.quantity)}</td>
-                <td className="px-6 py-4 text-right">{currencyFormatter.format(holding.averageBuyPriceUsd)}</td>
-                <td className="px-6 py-4 text-right">
+                <td className="px-6 py-4 tabular-nums">{formatQuantity(holding.quantity)}</td>
+                <td className="px-6 py-4 text-right tabular-nums">{currencyFormatter.format(holding.averageBuyPriceUsd)}</td>
+                <td className="px-6 py-4 text-right tabular-nums">
                   {formatMarketValue(holding, holding.currentPriceUsd, "No market data")}
                 </td>
-                <td className="px-6 py-4 text-right">{currencyFormatter.format(holding.investedValueUsd)}</td>
-                <td className="px-6 py-4 text-right">
+                <td className="px-6 py-4 text-right tabular-nums">{currencyFormatter.format(holding.investedValueUsd)}</td>
+                <td className="px-6 py-4 text-right tabular-nums">
                   {formatMarketValue(holding, holding.currentValueUsd, "Not valued")}
                 </td>
-                <td className="px-6 py-4 text-right">
+                <td className={`px-6 py-4 text-right font-medium tabular-nums ${holding.marketPriceAvailable ? profitLossClass(holding.profitLossUsd) : ""}`}>
                   {formatMarketValue(holding, holding.profitLossUsd, "Unavailable")}
                 </td>
               </tr>

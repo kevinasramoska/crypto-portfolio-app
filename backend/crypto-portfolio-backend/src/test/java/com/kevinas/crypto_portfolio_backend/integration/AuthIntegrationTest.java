@@ -59,4 +59,15 @@ class AuthIntegrationTest {
                 .andExpect(jsonPath("$.accessToken").exists())
                 .andExpect(jsonPath("$.accessToken").isString());
     }
+
+    @Test
+    void register_shouldRejectShortPassword() throws Exception {
+        RegisterRequest request = new RegisterRequest("short-password@example.com", "short");
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fields.password").exists());
+    }
 }

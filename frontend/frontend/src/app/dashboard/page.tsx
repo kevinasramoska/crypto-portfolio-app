@@ -11,9 +11,10 @@ import PriceTable from "@/components/PriceTable";
 import TransactionSummaryCards from "@/components/TransactionSummaryCards";
 import TransactionsTable from "@/components/TransactionsTable";
 import WatchlistControls from "@/components/WatchlistControls";
+import Link from "next/link";
 import { getPrices } from "@/lib/api";
 import { useDashboardData } from "@/hooks/useDashboardData";
-import { Holding, PriceMap } from "@/lib/types";
+import { PriceMap } from "@/lib/types";
 
 const DEFAULT_WATCHLIST = ["BTC", "ETH", "SOL", "LINK", "DOGE"];
 const WATCHLIST_STORAGE_KEY = "crypto-dashboard-watchlist";
@@ -122,6 +123,7 @@ export default function DashboardPage() {
     holdings.length === 0
       ? "No open holdings yet. Record a buy transaction to create your first position."
       : "No holdings match your current filters.";
+  const isNewPortfolio = !portfolioDataLoading && holdings.length === 0;
 
   const loadPrices = useCallback(async () => {
     if (!watchlist.length) {
@@ -196,7 +198,7 @@ export default function DashboardPage() {
          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
            <div>
              <h1 className="text-3xl font-bold">Dashboard</h1>
-             <p className="mt-1 text-sm text-gray-500">Portfolio data is synced from the backend API.</p>
+             <p className="mt-1 text-sm text-gray-500">Explore live markets or sign in to manage your portfolio.</p>
            </div>
            <div className="flex items-center gap-3 text-xs text-gray-500">
              {priceTimestamp && (
@@ -270,17 +272,49 @@ export default function DashboardPage() {
            </div>
          </div>
 
-        {portfolioDataError && (
+        {portfolioRequiresAuth ? (
+          <div className="rounded-2xl border border-purple-500/30 bg-gradient-to-r from-purple-500/15 to-purple-950/20 p-6 sm:p-8">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-purple-300">Your portfolio starts here</p>
+            <h2 className="mt-2 text-2xl font-semibold text-white">Create an account to track your own holdings.</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-300">
+              The market watchlist is open to explore. Register to record transactions, calculate profit and loss, and
+              see your portfolio history.
+            </p>
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <Link href="/register" className="rounded-lg bg-purple-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-purple-500">
+                Create account
+              </Link>
+              <Link href="/login" className="rounded-lg border border-purple-400/50 px-5 py-3 text-center text-sm font-semibold text-purple-100 transition hover:bg-purple-500/10">
+                Log in
+              </Link>
+            </div>
+          </div>
+        ) : portfolioDataError ? (
           <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-6 text-sm text-red-200">
             {portfolioDataError}
           </div>
+        ) : (
+          <PortfolioSummaryCards summary={portfolioSummary} loading={portfolioDataLoading} />
         )}
-
-        {!portfolioDataError && <PortfolioSummaryCards summary={portfolioSummary} loading={portfolioDataLoading} />}
       </section>
 
       {!portfolioRequiresAuth && (
         <>
+          {isNewPortfolio && (
+            <section className="rounded-2xl border border-purple-500/25 bg-purple-500/5 p-6 sm:p-8">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-purple-300">Getting started</p>
+              <h2 className="mt-2 text-2xl font-semibold text-white">Build your portfolio in three steps.</h2>
+              <ol className="mt-5 grid gap-4 text-sm text-gray-300 sm:grid-cols-3">
+                <li className="rounded-xl border border-gray-800 bg-gray-950/50 p-4"><span className="font-semibold text-purple-200">1. Record a buy</span><p className="mt-1 text-gray-400">Add your coin, quantity, and purchase price.</p></li>
+                <li className="rounded-xl border border-gray-800 bg-gray-950/50 p-4"><span className="font-semibold text-purple-200">2. Review holdings</span><p className="mt-1 text-gray-400">See current value, cost basis, and open P/L.</p></li>
+                <li className="rounded-xl border border-gray-800 bg-gray-950/50 p-4"><span className="font-semibold text-purple-200">3. Build history</span><p className="mt-1 text-gray-400">Performance appears as snapshots are recorded over time.</p></li>
+              </ol>
+              <a href="#record-transaction" className="mt-5 inline-flex rounded-lg bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500">
+                Record your first buy
+              </a>
+            </section>
+          )}
+
           <section className="space-y-6">
             <div>
               <h2 className="text-2xl font-semibold">Asset allocation</h2>
@@ -318,10 +352,12 @@ export default function DashboardPage() {
               />
             </div>
 
-            <AddTransactionForm
-              onSubmit={payload => handleCreateTransaction(payload, loadPrices)}
-              disabled={portfolioDataLoading || transactionLoading}
-            />
+            <div id="record-transaction" className={isNewPortfolio ? "order-first" : undefined}>
+              <AddTransactionForm
+                onSubmit={payload => handleCreateTransaction(payload, loadPrices)}
+                disabled={portfolioDataLoading || transactionLoading}
+              />
+            </div>
           </section>
 
           <section className="space-y-6">

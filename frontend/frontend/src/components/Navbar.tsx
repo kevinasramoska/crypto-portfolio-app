@@ -31,25 +31,32 @@ export default function Navbar({ showAuthLinks = true }: Props) {
   }
 
   const showGuestLinks = showAuthLinks && !profile;
+  const dashboardIsActive = pathname === "/dashboard";
 
   return (
-    <nav className="border-b border-gray-800 bg-black/40 backdrop-blur-sm sticky top-0 z-10">
-      <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-        <Link href="/dashboard" className="text-xl font-semibold tracking-wide">
+    <nav className="sticky top-0 z-10 border-b border-gray-800/80 bg-black/65 backdrop-blur-md">
+      <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
+        <Link href="/" className="rounded-md text-lg font-semibold tracking-wide transition hover:text-purple-200 sm:text-xl">
           Crypto<span className="text-purple-400">Tracker</span>
         </Link>
 
-        <div className="flex items-center gap-6 text-sm">
-          <Link href="/dashboard" className="hover:text-purple-400 transition-colors">
+        <div className="flex items-center gap-2 text-sm sm:gap-4">
+          <Link
+            href="/dashboard"
+            aria-current={dashboardIsActive ? "page" : undefined}
+            className={`rounded-md px-2 py-1.5 transition hover:bg-purple-500/10 hover:text-purple-300 ${
+              dashboardIsActive ? "bg-purple-500/10 text-purple-200" : "text-gray-300"
+            }`}
+          >
             Dashboard
           </Link>
 
           {profile ? (
             <>
-              <span className="text-gray-300">Hi, {profile.firstName}</span>
+              <span className="hidden text-gray-300 sm:inline">Hi, {profile.firstName}</span>
               <button
                 onClick={handleLogout}
-                className="rounded-lg border border-purple-500/60 px-4 py-1.5 text-purple-200 hover:bg-purple-600/20 transition"
+                className="rounded-lg border border-purple-500/60 px-3 py-1.5 text-purple-100 transition hover:bg-purple-600/20 sm:px-4"
               >
                 Logout
               </button>
@@ -57,11 +64,11 @@ export default function Navbar({ showAuthLinks = true }: Props) {
           ) : (
             showGuestLinks && (
               <>
-                <Link href="/login" className="hover:text-purple-400 transition-colors">
-                  Login
+                <Link href="/login" className="rounded-md px-2 py-1.5 transition hover:bg-purple-500/10 hover:text-purple-300">
+                  Log in
                 </Link>
-                <Link href="/register" className="hover:text-purple-400 transition-colors">
-                  Register
+                <Link href="/register" className="rounded-lg bg-purple-600 px-3 py-1.5 font-medium text-white transition hover:bg-purple-500 sm:px-4">
+                  Get started
                 </Link>
               </>
             )

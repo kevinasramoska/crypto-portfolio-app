@@ -15,9 +15,12 @@ export default function CryptoCard({ symbol, price, loading, currency = "EUR", o
   });
 
   return (
-    <div className="relative rounded-xl bg-gray-900 text-white p-5 border border-gray-700 shadow-sm">
+    <div className="relative overflow-hidden rounded-xl border border-gray-800 bg-gray-950/70 p-5 text-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-purple-500/40 hover:shadow-lg hover:shadow-purple-950/20">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold">{symbol}</h2>
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500">Live market</p>
+          <h2 className="mt-1 text-xl font-bold">{symbol}</h2>
+        </div>
         {onRemove && (
           <button
             type="button"
@@ -32,9 +35,9 @@ export default function CryptoCard({ symbol, price, loading, currency = "EUR", o
       {loading ? (
         <div className="mt-4 h-8 w-32 rounded-sm bg-gray-800 animate-pulse" />
       ) : hasPrice ? (
-        <p className="text-3xl mt-2 text-purple-300">{formatter.format(price)}</p>
+        <p className="mt-4 text-3xl font-semibold tracking-tight text-purple-200 tabular-nums">{formatter.format(price)}</p>
       ) : (
-        <p className="text-sm mt-2 text-red-400">No market data</p>
+        <p className="mt-4 text-sm font-medium text-amber-300">No market data</p>
       )}
     </div>
   );

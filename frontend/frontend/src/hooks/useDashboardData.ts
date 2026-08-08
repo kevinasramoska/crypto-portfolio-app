@@ -11,6 +11,7 @@ import {
   getTransactions,
   getTransactionsPaginated,
 } from "@/lib/api";
+import { getToken } from "@/lib/auth";
 import {
   Holding,
   PerformanceRange,
@@ -84,6 +85,16 @@ export function useDashboardData() {
   const [transactionHasPrevious, setTransactionHasPrevious] = useState(false);
 
   const loadPortfolioData = useCallback(async () => {
+    if (!getToken()) {
+      setPortfolioDataError("Login to view your portfolio.");
+      setPortfolioRequiresAuth(true);
+      setHoldings([]);
+      setPortfolioSummary(null);
+      setLastPortfolioUpdated(null);
+      setPortfolioDataLoading(false);
+      return;
+    }
+
     try {
       setPortfolioDataLoading(true);
       setPortfolioDataError(null);
@@ -98,11 +109,11 @@ export function useDashboardData() {
       setLastPortfolioUpdated(new Date());
       setPortfolioRequiresAuth(false);
     } catch (error) {
-      console.error("Error loading portfolio data", error);
       if (isAuthError(error)) {
         setPortfolioDataError("Login to view your portfolio.");
         setPortfolioRequiresAuth(true);
       } else {
+        console.error("Error loading portfolio data", error);
         setPortfolioDataError("Unable to load your portfolio right now.");
       }
       setHoldings([]);
@@ -114,6 +125,16 @@ export function useDashboardData() {
   }, []);
 
   const loadTransactionData = useCallback(async () => {
+    if (!getToken()) {
+      setTransactionError("Login to view your transactions.");
+      setPortfolioDataError("Login to view your portfolio.");
+      setPortfolioRequiresAuth(true);
+      setTransactions([]);
+      setTransactionSummary(null);
+      setTransactionLoading(false);
+      return;
+    }
+
     try {
       setTransactionLoading(true);
       setTransactionError(null);
@@ -130,12 +151,12 @@ export function useDashboardData() {
       setTransactionHasPrevious(paginatedData.hasPrevious);
       setTransactionSummary(transactionSummaryData);
     } catch (error) {
-      console.error("Error loading transaction data", error);
       if (isAuthError(error)) {
         setTransactionError("Login to view your transactions.");
         setPortfolioDataError("Login to view your portfolio.");
         setPortfolioRequiresAuth(true);
       } else {
+        console.error("Error loading transaction data", error);
         setTransactionError("Unable to load transactions right now.");
       }
       setTransactions([]);
@@ -146,6 +167,15 @@ export function useDashboardData() {
   }, [transactionPageNumber, transactionPageSize]);
 
   const loadPerformanceData = useCallback(async () => {
+    if (!getToken()) {
+      setPerformanceError("Login to view performance history.");
+      setPortfolioDataError("Login to view your portfolio.");
+      setPortfolioRequiresAuth(true);
+      setPerformanceHistory(null);
+      setPerformanceLoading(false);
+      return;
+    }
+
     try {
       setPerformanceLoading(true);
       setPerformanceError(null);
@@ -153,12 +183,12 @@ export function useDashboardData() {
       const performanceData = await getPortfolioPerformanceHistory(performanceRange);
       setPerformanceHistory(performanceData);
     } catch (error) {
-      console.error("Error loading performance history", error);
       if (isAuthError(error)) {
         setPerformanceError("Login to view performance history.");
         setPortfolioDataError("Login to view your portfolio.");
         setPortfolioRequiresAuth(true);
       } else {
+        console.error("Error loading performance history", error);
         setPerformanceError("Unable to load performance history right now.");
       }
       setPerformanceHistory(null);

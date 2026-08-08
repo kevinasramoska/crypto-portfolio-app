@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { getToken } from "@/lib/auth";
 
 const features = [
   {
@@ -24,6 +28,12 @@ const features = [
 ];
 
 export default function Home() {
+  const [isSignedIn, setIsSignedIn] = useState(false);
+
+  useEffect(() => {
+    queueMicrotask(() => setIsSignedIn(Boolean(getToken())));
+  }, []);
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-900 via-black to-slate-900 text-white">
       {/* Hero Section */}
@@ -41,31 +51,42 @@ export default function Home() {
               .
             </h1>
             <p className="max-w-2xl text-lg leading-8 text-gray-300">
-              Track every transaction. Monitor your holdings. Calculate real profit and loss. All in one place. Get
-              clarity on what matters.
+              Record buys and sells, monitor open holdings, and understand realised and unrealised profit and loss in
+              one clear portfolio view.
             </p>
           </div>
 
           {/* CTA Buttons */}
           <div className="flex flex-col gap-4 pt-4 sm:flex-row sm:gap-3">
-            <Link
-              href="/register"
-              className="rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 px-8 py-3 text-center font-semibold text-white transition hover:from-purple-500 hover:to-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 focus:ring-offset-black"
-            >
-              Get Started
-            </Link>
-            <Link
-              href="/login"
-              className="rounded-lg border border-purple-500/30 bg-purple-500/10 px-8 py-3 text-center font-semibold text-purple-100 transition hover:border-purple-400/50 hover:bg-purple-400/20 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 focus:ring-offset-black"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/dashboard"
-              className="rounded-lg border border-gray-700 bg-gray-800/20 px-8 py-3 text-center font-semibold text-gray-200 transition hover:border-gray-600 hover:bg-gray-700/30 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 focus:ring-offset-black"
-            >
-              View Demo
-            </Link>
+            {isSignedIn ? (
+              <Link
+                href="/dashboard"
+                className="rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 px-8 py-3 text-center font-semibold text-white transition hover:from-purple-500 hover:to-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 focus:ring-offset-black"
+              >
+                Open Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/register"
+                  className="rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 px-8 py-3 text-center font-semibold text-white transition hover:from-purple-500 hover:to-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 focus:ring-offset-black"
+                >
+                  Get Started
+                </Link>
+                <Link
+                  href="/login"
+                  className="rounded-lg border border-purple-500/30 bg-purple-500/10 px-8 py-3 text-center font-semibold text-purple-100 transition hover:border-purple-400/50 hover:bg-purple-400/20 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 focus:ring-offset-black"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/dashboard"
+                  className="rounded-lg border border-gray-700 bg-gray-800/20 px-8 py-3 text-center font-semibold text-gray-200 transition hover:border-gray-600 hover:bg-gray-700/30 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 focus:ring-offset-black"
+                >
+                  Explore markets
+                </Link>
+              </>
+            )}
           </div>
         </div>
 
@@ -112,19 +133,19 @@ export default function Home() {
             <div className="rounded-xl border border-gray-800/50 bg-gray-950/40 p-8 text-center">
               <div className="space-y-2">
                 <p className="text-4xl font-bold text-purple-400">100%</p>
-                <p className="text-sm text-gray-400">Realised & Unrealised P/L</p>
+                <p className="text-sm text-gray-400">Realised & unrealised P/L</p>
               </div>
             </div>
             <div className="rounded-xl border border-gray-800/50 bg-gray-950/40 p-8 text-center">
               <div className="space-y-2">
                 <p className="text-4xl font-bold text-purple-400">12+</p>
-                <p className="text-sm text-gray-400">Supported Coins</p>
+                <p className="text-sm text-gray-400">Supported coins</p>
               </div>
             </div>
             <div className="rounded-xl border border-gray-800/50 bg-gray-950/40 p-8 text-center">
               <div className="space-y-2">
                 <p className="text-4xl font-bold text-purple-400">∞</p>
-                <p className="text-sm text-gray-400">Transaction History</p>
+                <p className="text-sm text-gray-400">Transaction history</p>
               </div>
             </div>
           </div>
@@ -135,25 +156,38 @@ export default function Home() {
       <section className="relative px-6 py-20">
         <div className="mx-auto max-w-2xl space-y-8 text-center">
           <div className="space-y-4">
-            <h2 className="text-4xl font-bold tracking-tight">Ready to start?</h2>
+            <h2 className="text-4xl font-bold tracking-tight">{isSignedIn ? "Ready to review?" : "Ready to start?"}</h2>
             <p className="text-lg text-gray-400">
-              Create an account in seconds and start tracking your crypto portfolio today.
+              {isSignedIn
+                ? "Review your holdings, transactions, and portfolio performance."
+                : "Create an account in seconds and start tracking your crypto portfolio today."}
             </p>
           </div>
 
           <div className="flex gap-3 justify-center">
-            <Link
-              href="/register"
-              className="rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 px-8 py-3 font-semibold text-white transition hover:from-purple-500 hover:to-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 focus:ring-offset-black"
-            >
-              Create Account
-            </Link>
-            <Link
-              href="/login"
-              className="rounded-lg border border-gray-700 bg-gray-800/20 px-8 py-3 font-semibold text-gray-200 transition hover:border-gray-600 hover:bg-gray-700/30 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 focus:ring-offset-black"
-            >
-              Log In
-            </Link>
+            {isSignedIn ? (
+              <Link
+                href="/dashboard"
+                className="rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 px-8 py-3 font-semibold text-white transition hover:from-purple-500 hover:to-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 focus:ring-offset-black"
+              >
+                View Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/register"
+                  className="rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 px-8 py-3 font-semibold text-white transition hover:from-purple-500 hover:to-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 focus:ring-offset-black"
+                >
+                  Create Account
+                </Link>
+                <Link
+                  href="/login"
+                  className="rounded-lg border border-gray-700 bg-gray-800/20 px-8 py-3 font-semibold text-gray-200 transition hover:border-gray-600 hover:bg-gray-700/30 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 focus:ring-offset-black"
+                >
+                  Log In
+                </Link>
+              </>
+            )}
           </div>
         </div>
 
