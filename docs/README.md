@@ -42,14 +42,13 @@ The app is transaction-driven. Users write transactions, the backend updates sto
 ├── tasklist.MD
 ├── .env.example
 ├── backend/
-│   └── crypto-portfolio-backend/
-│       ├── docker-compose.yml
-│       ├── pom.xml
-│       └── src/
-│           ├── main/java/com/kevinas/crypto_portfolio_backend/
-│           ├── main/resources/application.yaml
-│           ├── main/resources/db/migration/
-│           └── test/
+│   ├── docker-compose.yml
+│   ├── pom.xml
+│   └── src/
+│       ├── main/java/com/kevinas/crypto_portfolio_backend/
+│       ├── main/resources/application.yaml
+│       ├── main/resources/db/migration/
+│       └── test/
 └── frontend/
     ├── .env.example
     ├── package.json
@@ -86,12 +85,12 @@ source .env.local
 set +a
 ```
 
-Spring Boot also has local defaults in `backend/crypto-portfolio-backend/src/main/resources/application.yaml`, so the backend can run without sourcing a `.env` file when using the default Docker database.
+Spring Boot also has local defaults in `backend/src/main/resources/application.yaml`, so the backend can run without sourcing a `.env` file when using the default Docker database.
 
 ### 3. Start PostgreSQL
 
 ```bash
-cd backend/crypto-portfolio-backend
+cd backend
 docker compose up -d
 ```
 
@@ -103,7 +102,7 @@ docker compose up -d
 ### 4. Run Backend
 
 ```bash
-cd backend/crypto-portfolio-backend
+cd backend
 ./mvnw spring-boot:run
 ```
 
@@ -123,11 +122,11 @@ Frontend default URL: `http://localhost:3000`
 
 | Area | Command |
 |---|---|
-| Start database | `cd backend/crypto-portfolio-backend && docker compose up -d` |
-| Stop database | `cd backend/crypto-portfolio-backend && docker compose down` |
-| Run backend | `cd backend/crypto-portfolio-backend && ./mvnw spring-boot:run` |
-| Backend tests | `cd backend/crypto-portfolio-backend && ./mvnw test` |
-| Backend build | `cd backend/crypto-portfolio-backend && ./mvnw package` |
+| Start database | `cd backend && docker compose up -d` |
+| Stop database | `cd backend && docker compose down` |
+| Run backend | `cd backend && ./mvnw spring-boot:run` |
+| Backend tests | `cd backend && ./mvnw test` |
+| Backend build | `cd backend && ./mvnw package` |
 | Run frontend | `cd frontend && npm run dev` |
 | Frontend tests | `cd frontend && npm test` |
 | Frontend lint | `cd frontend && npm run lint` |
@@ -279,7 +278,7 @@ Unsupported symbols can still be recorded manually, but market-value fields are 
 
 | Problem | Check |
 |---|---|
-| Backend cannot connect to DB | Confirm `docker compose up -d` is running in `backend/crypto-portfolio-backend`, port `5432` is free, and `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` match Docker defaults. |
+| Backend cannot connect to DB | Confirm `docker compose up -d` is running in `backend`, port `5432` is free, and `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` match Docker defaults. |
 | Flyway or schema startup errors | Confirm the database is the expected local `cryptodb`. `V2__transaction_constraints.sql` is intentionally a no-op and should remain versioned. |
 | Port `8080` already in use | Stop the other process or run backend with `SERVER_PORT=8081`; then update `NEXT_PUBLIC_API_BASE_URL`. |
 | Port `3000` already in use | Run `npm run dev -- --port 3001`. Backend CORS currently allows `http://localhost:3000`, so changing frontend ports may require a CORS config update. |

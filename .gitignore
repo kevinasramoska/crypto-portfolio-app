@@ -12,6 +12,19 @@ Thumbs.db
 .classpath
 .project
 .settings/
+.factorypath
+.springBeans
+.sts4-cache/
+*.iws
+*.ipr
+.apt_generated/
+
+# Additional Java IDE build output
+build/
+nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/
 
 # Frontend dependencies and build output
 node_modules/

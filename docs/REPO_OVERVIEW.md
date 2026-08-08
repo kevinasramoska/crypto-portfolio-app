@@ -37,26 +37,25 @@ Recent dashboard reliability work added clearer unsupported market-data display,
 ├── tasklist.MD
 ├── .env.example
 ├── backend/
-│   └── crypto-portfolio-backend/
-│       ├── pom.xml
-│       ├── docker-compose.yml
-│       ├── src/main/java/com/kevinas/crypto_portfolio_backend/
-│       │   ├── config/
-│       │   ├── controller/
-│       │   ├── dto/
-│       │   ├── exception/
-│       │   ├── model/
-│       │   ├── repository/
-│       │   ├── scheduler/
-│       │   ├── security/
-│       │   ├── service/
-│       │   └── CryptoPortfolioBackendApplication.java
-│       ├── src/main/resources/
-│       │   ├── application.yaml
-│       │   ├── application-e2e.yaml
-│       │   ├── application-test.yaml
-│       │   └── db/migration/
-│       └── src/test/
+│   ├── pom.xml
+│   ├── docker-compose.yml
+│   ├── src/main/java/com/kevinas/crypto_portfolio_backend/
+│   │   ├── config/
+│   │   ├── controller/
+│   │   ├── dto/
+│   │   ├── exception/
+│   │   ├── model/
+│   │   ├── repository/
+│   │   ├── scheduler/
+│   │   ├── security/
+│   │   ├── service/
+│   │   └── CryptoPortfolioBackendApplication.java
+│   ├── src/main/resources/
+│   │   ├── application.yaml
+│   │   ├── application-e2e.yaml
+│   │   ├── application-test.yaml
+│   │   └── db/migration/
+│   └── src/test/
 └── frontend/
     ├── .env.example
     ├── package.json
@@ -69,7 +68,7 @@ Recent dashboard reliability work added clearer unsupported market-data display,
     ├── src/app/
     ├── src/components/
     ├── src/hooks/
-        └── src/lib/
+    └── src/lib/
 ```
 
 Important backend folders:
@@ -104,7 +103,7 @@ Important frontend folders:
 The backend starts from:
 
 ```text
-backend/crypto-portfolio-backend/src/main/java/com/kevinas/crypto_portfolio_backend/CryptoPortfolioBackendApplication.java
+backend/src/main/java/com/kevinas/crypto_portfolio_backend/CryptoPortfolioBackendApplication.java
 ```
 
 Startup flow:
@@ -209,12 +208,12 @@ Authorization: Bearer <token>
 
 | File | Why it matters |
 |---|---|
-| `backend/crypto-portfolio-backend/pom.xml` | Backend dependencies and Maven build config |
-| `backend/crypto-portfolio-backend/docker-compose.yml` | Local PostgreSQL and pgAdmin setup |
-| `backend/crypto-portfolio-backend/src/main/resources/application.yaml` | Main backend env-based runtime configuration |
-| `backend/crypto-portfolio-backend/src/main/resources/db/migration/V1__init_schema.sql` | Creates main database schema |
-| `backend/crypto-portfolio-backend/src/main/resources/db/migration/V2__transaction_constraints.sql` | Intentional no-op placeholder retained for Flyway version history |
-| `backend/crypto-portfolio-backend/src/main/resources/db/migration/V3__portfolio_snapshots.sql` | Creates portfolio snapshot table |
+| `backend/pom.xml` | Backend dependencies and Maven build config |
+| `backend/docker-compose.yml` | Local PostgreSQL and pgAdmin setup |
+| `backend/src/main/resources/application.yaml` | Main backend env-based runtime configuration |
+| `backend/src/main/resources/db/migration/V1__init_schema.sql` | Creates main database schema |
+| `backend/src/main/resources/db/migration/V2__transaction_constraints.sql` | Intentional no-op placeholder retained for Flyway version history |
+| `backend/src/main/resources/db/migration/V3__portfolio_snapshots.sql` | Creates portfolio snapshot table |
 | `CryptoPortfolioBackendApplication.java` | Backend application entry point |
 | `SecurityConfig.java` | Defines JWT security rules and public/protected endpoints |
 | `JwtAuthenticationFilter.java` | Reads and validates Bearer tokens |
@@ -260,14 +259,14 @@ Current API endpoints:
 ### Start Local Database
 
 ```bash
-cd backend/crypto-portfolio-backend
+cd backend
 docker compose up -d
 ```
 
 ### Run Backend
 
 ```bash
-cd backend/crypto-portfolio-backend
+cd backend
 ./mvnw spring-boot:run
 ```
 
@@ -295,7 +294,7 @@ http://localhost:3000
 ### Build Backend
 
 ```bash
-cd backend/crypto-portfolio-backend
+cd backend
 ./mvnw package
 ```
 
@@ -325,7 +324,7 @@ npm run lint
 ### Run Backend Tests
 
 ```bash
-cd backend/crypto-portfolio-backend
+cd backend
 ./mvnw test
 ```
 

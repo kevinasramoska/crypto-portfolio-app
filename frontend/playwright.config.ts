@@ -3,7 +3,7 @@ import path from "node:path";
 
 const frontendDir = __dirname;
 const repoRoot = path.resolve(frontendDir, "..");
-const backendDir = path.resolve(repoRoot, "backend/crypto-portfolio-backend");
+const backendDir = path.resolve(repoRoot, "backend");
 
 export default defineConfig({
   testDir: "./e2e",

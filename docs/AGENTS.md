@@ -46,7 +46,7 @@ Local infrastructure:
 ## Repository Structure
 
 Backend:
-- `backend/crypto-portfolio-backend`
+- `backend`
 
 Frontend:
 - `frontend`
@@ -127,7 +127,7 @@ The app is transaction-driven.
 Backend tests:
 
 ```bash
-cd backend/crypto-portfolio-backend
+cd backend
 ./mvnw test
 ```
 

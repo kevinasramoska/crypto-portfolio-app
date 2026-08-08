@@ -11,7 +11,7 @@ Use this as a working backlog for the crypto portfolio tracker. Tasks are groupe
   - Risk: Medium
   - Priority: P0
   - Status: Current implementation and docs are ready for review. Remaining action is to commit from `/Users/kevinasramoska/Desktop/crypto-portfolio-app` or port changes to the other local checkout.
-  - Files likely involved: `backend/crypto-portfolio-backend/src/**`, `frontend/src/**`, `README.md`, `REPO_OVERVIEW.md`, `tasklist.MD`
+  - Files likely involved: `backend/src/**`, `frontend/src/**`, `README.md`, `REPO_OVERVIEW.md`, `tasklist.MD`
 
 - [x] Run full verification
   - Description: Run backend tests, frontend lint, and frontend build.
@@ -20,7 +20,7 @@ Use this as a working backlog for the crypto portfolio tracker. Tasks are groupe
   - Risk: Low
   - Priority: P0
   - Commands:
-    - `cd backend/crypto-portfolio-backend && ./mvnw test`
+    - `cd backend && ./mvnw test`
     - `cd frontend && npm run lint`
     - `cd frontend && npm run build`
 
@@ -252,7 +252,7 @@ Use this as a working backlog for the crypto portfolio tracker. Tasks are groupe
   - Complexity: Low
   - Risk: Low
   - Priority: P0
-  - Files likely involved: `backend/crypto-portfolio-backend/src/test/**`
+  - Files likely involved: `backend/src/test/**`
 
 - [x] Add frontend smoke tests
   - Description: Add tests for dashboard render, auth forms, and transaction form validation.
