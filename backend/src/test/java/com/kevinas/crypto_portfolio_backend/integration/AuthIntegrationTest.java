@@ -70,4 +70,20 @@ class AuthIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fields.password").exists());
     }
+
+    @Test
+    void register_shouldNotRevealWhetherAnEmailAlreadyExists() throws Exception {
+        RegisterRequest request = new RegisterRequest("duplicate@example.com", "password123");
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Registration failed"));
+    }
 }

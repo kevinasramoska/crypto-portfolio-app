@@ -24,7 +24,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public JwtResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.email())) {
-            throw new IllegalArgumentException("Email already in use");
+            throw new IllegalArgumentException("Registration failed");
         }
 
         User user = User.builder()

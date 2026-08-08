@@ -3,6 +3,7 @@ package com.kevinas.crypto_portfolio_backend.security;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,19 @@ public class JwtService {
 
     @Value("${jwt.expiration-seconds}")
     private long expirationSeconds;
+
+    @PostConstruct
+    void validateConfiguration() {
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException("JWT secret must be configured");
+        }
+        if (secret.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalStateException("JWT secret must be at least 32 bytes");
+        }
+        if (expirationSeconds <= 0) {
+            throw new IllegalStateException("JWT expiration must be positive");
+        }
+    }
 
     public String generateToken(String subject) {
         Date now = new Date();

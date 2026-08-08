@@ -30,3 +30,11 @@ jwt:
 crypto:
   api:
     base-url: https://api.coingecko.com/api/v3
+
+rate-limit:
+  auth:
+    max-requests: 10000
+    window-seconds: 60
+  market:
+    max-requests: 10000
+    window-seconds: 60

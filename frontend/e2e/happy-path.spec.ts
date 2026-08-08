@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-test("registers, logs in, creates a transaction, and shows dashboard data", async ({ page }) => {
+test("registers, logs in, creates a transaction, and shows dashboard data", async ({
+  page,
+}) => {
   const uniqueSuffix = Date.now();
   const email = `e2e-${uniqueSuffix}@example.com`;
   const password = "Password123!";
@@ -30,20 +32,32 @@ test("registers, logs in, creates a transaction, and shows dashboard data", asyn
   await expect(page.getByLabel("Symbol", { exact: true })).toHaveValue("BTC");
   await expect(page.getByLabel("Name", { exact: true })).toHaveValue("Bitcoin");
 
-  await page.getByLabel("Quantity").fill("1");
-  await page.getByLabel("Price USD").fill("50000");
+  await page.getByLabel("Quantity", { exact: true }).fill("1");
+  await page.getByLabel("Price USD", { exact: true }).fill("50000");
   await page.getByRole("button", { name: "Save transaction" }).click();
 
   await expect(page.getByTestId("holding-row-BTC")).toContainText("Bitcoin");
   await expect(page.getByTestId("holding-row-BTC")).toContainText("1");
   await expect(page.getByTestId("holding-row-BTC")).toContainText("$50,000.00");
   await expect(page.getByTestId("holding-row-BTC")).toContainText("$60,000.00");
-  await expect(page.getByTestId("transaction-row-BTC-buy")).toContainText("BUY");
-  await expect(page.getByTestId("transaction-row-BTC-buy")).toContainText("$50,000.00");
+  await expect(page.getByTestId("transaction-row-BTC-buy")).toContainText(
+    "BUY",
+  );
+  await expect(page.getByTestId("transaction-row-BTC-buy")).toContainText(
+    "$50,000.00",
+  );
 
-  await expect(page.getByTestId("portfolio-card-current-value")).toContainText("$60,000.00");
-  await expect(page.getByTestId("portfolio-card-invested")).toContainText("$50,000.00");
-  await expect(page.getByTestId("portfolio-card-unrealised-p-l")).toContainText("$10,000.00");
-  await expect(page.getByTestId("portfolio-card-total-p-l")).toContainText("$10,000.00");
+  await expect(page.getByTestId("portfolio-card-current-value")).toContainText(
+    "$60,000.00",
+  );
+  await expect(page.getByTestId("portfolio-card-invested")).toContainText(
+    "$50,000.00",
+  );
+  await expect(page.getByTestId("portfolio-card-unrealised-p-l")).toContainText(
+    "$10,000.00",
+  );
+  await expect(page.getByTestId("portfolio-card-total-p-l")).toContainText(
+    "$10,000.00",
+  );
   await expect(page.getByTestId("portfolio-card-assets")).toContainText("1");
 });

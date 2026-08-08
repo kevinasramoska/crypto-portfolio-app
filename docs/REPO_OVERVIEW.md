@@ -23,7 +23,7 @@ Recent dashboard reliability work added clearer unsupported market-data display,
 | ORM | Spring Data JPA, Hibernate |
 | Migrations | Flyway |
 | External API | CoinGecko |
-| Backend tests | JUnit 5, Spring Boot Test, MockMvc, Mockito, H2 |
+| Backend tests | JUnit 5, Spring Boot Test, MockMvc, Mockito, H2, PostgreSQL Testcontainers |
 | Frontend | Next.js 16.2.9 App Router, React 19.2.7, TypeScript |
 | Styling | Tailwind CSS |
 | Local infrastructure | Docker Compose, PostgreSQL, pgAdmin |
@@ -33,10 +33,10 @@ Recent dashboard reliability work added clearer unsupported market-data display,
 ```text
 .
 ├── README.md
-├── REPO_OVERVIEW.md
-├── tasklist.MD
 ├── .env.example
+├── .github/workflows/ci.yml
 ├── backend/
+│   ├── Dockerfile
 │   ├── pom.xml
 │   ├── docker-compose.yml
 │   ├── src/main/java/com/kevinas/crypto_portfolio_backend/
@@ -56,6 +56,10 @@ Recent dashboard reliability work added clearer unsupported market-data display,
 │   │   ├── application-test.yaml
 │   │   └── db/migration/
 │   └── src/test/
+├── docs/
+│   ├── AGENTS.md
+│   ├── REPO_OVERVIEW.md
+│   └── tasklist.MD
 └── frontend/
     ├── .env.example
     ├── package.json
@@ -112,9 +116,9 @@ Startup flow:
 2. Spring loads controllers, services, repositories, security config, and JPA.
 3. Flyway applies database migrations when enabled.
 4. The API listens on port `8080` by default.
-5. Public endpoints are available for auth, market prices, and Swagger/OpenAPI.
-6. Protected endpoints require a valid JWT Bearer token.
-7. CORS is explicitly enabled for the local frontend origin `http://localhost:3000`.
+5. Public endpoints are available for auth, market prices, health probes, and Swagger/OpenAPI.
+6. Protected endpoints, including operational metrics, require a valid JWT Bearer token.
+7. CORS origins and auth/market rate limits are environment-configurable.
 
 ### Frontend
 
@@ -172,9 +176,10 @@ Authorization: Bearer <token>
    - Verifies the user has enough quantity.
    - Reduces or deletes the holding.
    - Calculates realised profit/loss.
-5. Backend saves the `Transaction`.
-6. Backend attempts to create a portfolio snapshot.
-7. Backend returns the transaction response.
+5. Backend saves the `Transaction` in the same database transaction as the holding update.
+6. After that transaction commits, an `AFTER_COMMIT` listener attempts a portfolio snapshot in a separate transaction.
+7. Snapshot failure is logged but does not invalidate the committed transaction or holding state.
+8. Backend returns the transaction response.
 
 ### Portfolio Flow
 
@@ -242,6 +247,10 @@ Current API endpoints:
 
 | Method | Endpoint | Auth | Purpose |
 |---|---|---:|---|
+| `GET` | `/api/health` | No | Return a lightweight application health response |
+| `GET` | `/actuator/health/readiness` | No | Return Actuator readiness status |
+| `GET` | `/actuator/health/liveness` | No | Return Actuator liveness status |
+| `GET` | `/actuator/metrics` | Yes | List available Micrometer metrics |
 | `POST` | `/api/auth/register` | No | Register and receive a JWT |
 | `POST` | `/api/auth/login` | No | Log in and receive a JWT |
 | `GET` | `/api/market/prices?symbols=BTC,ETH` | No | Fetch current prices for supported mapped symbols |
@@ -335,6 +344,9 @@ The backend tests use:
 - MockMvc
 - Mockito
 - H2 test database
+- PostgreSQL Testcontainers for Flyway, constraint, rollback, and decimal behavior
+
+The Testcontainers suite requires a Docker-compatible runtime.
 
 ### Run Frontend Checks
 
@@ -345,6 +357,7 @@ cd frontend
 npm test
 npm run lint
 npm run build
+npm run test:e2e
 ```
 
 ## 9. Environment Variables
@@ -356,9 +369,15 @@ Backend environment variables:
 | `DB_URL` | `jdbc:postgresql://localhost:5432/cryptodb` | JDBC database URL |
 | `DB_USERNAME` | `postgres` | Database username |
 | `DB_PASSWORD` | `postgres` | Database password |
-| `SERVER_PORT` | `8080` | Backend server port |
-| `JWT_SECRET` | `change_this_in_real_env` | JWT signing secret |
+| `PORT` | none | Hosting-provider port; takes precedence over `SERVER_PORT` |
+| `SERVER_PORT` | `8080` | Local backend server port |
+| `JWT_SECRET` | local development default | JWT signing secret; required in `prod` and at least 32 bytes |
 | `JWT_EXPIRATION_SECONDS` | `3600` | JWT lifetime |
+| `APP_CORS_ALLOWED_ORIGINS` | `http://localhost:3000` | Comma-separated allowed frontend origins; required in `prod` |
+| `AUTH_RATE_LIMIT_MAX_REQUESTS` | `10` | Auth requests allowed per client window |
+| `AUTH_RATE_LIMIT_WINDOW_SECONDS` | `60` | Auth rate-limit window length |
+| `MARKET_RATE_LIMIT_MAX_REQUESTS` | `60` | Market requests allowed per client window |
+| `MARKET_RATE_LIMIT_WINDOW_SECONDS` | `60` | Market rate-limit window length |
 | `CRYPTO_API_BASE_URL` | `https://api.coingecko.com/api/v3` | Crypto market API base URL |
 | `SPRING_JPA_SHOW_SQL` | `true` | SQL logging toggle |
 | `PORTFOLIO_SNAPSHOT_FIXED_DELAY_MS` | `3600000` | Scheduled snapshot interval |
@@ -387,7 +406,10 @@ Frontend environment variables:
 - Unsupported symbols can still be recorded manually, but portfolio UI flags missing market data.
 - Dashboard protected API failures clear stale auth state when the backend returns `401` or `403`.
 - Dashboard portfolio, transaction, and performance-history sections now load and fail independently.
-- Local backend CORS currently allows `http://localhost:3000`.
+- Backend CORS defaults to `http://localhost:3000`; production must provide explicit allowed origins.
+- Auth and market-data routes use an in-memory, per-application-instance rate limiter.
+- Transaction and holding writes commit atomically; snapshot creation is best-effort after commit and also runs on a schedule.
+- PostgreSQL Testcontainers coverage requires Docker and is run by CI.
 - No seed data is present.
 - Frontend smoke and API-client tests are configured with Vitest and Testing Library.
 - This repository also exists locally at `/Users/kevinasramoska/Documents/GitHub/crypto-portfolio-app`; make sure commits are made from the intended checkout.

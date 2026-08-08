@@ -31,6 +31,13 @@ class MarketDataControllerIntegrationTest {
     private MarketDataService marketDataService;
 
     @Test
+    void health_shouldBeAvailableWithoutAuthentication() throws Exception {
+        mockMvc.perform(get("/api/health"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ok"));
+    }
+
+    @Test
     void supportedCoins_shouldReturnBackendSupportedMappings() throws Exception {
         when(marketDataService.getSupportedCoins()).thenReturn(List.of(
                 new SupportedCoinResponse("BTC", "Bitcoin", "bitcoin"),

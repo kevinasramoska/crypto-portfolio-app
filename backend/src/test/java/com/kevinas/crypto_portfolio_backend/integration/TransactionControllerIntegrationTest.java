@@ -3,6 +3,11 @@ package com.kevinas.crypto_portfolio_backend.integration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kevinas.crypto_portfolio_backend.config.TestConfig;
 import com.kevinas.crypto_portfolio_backend.dto.*;
+import com.kevinas.crypto_portfolio_backend.repository.CoinRepository;
+import com.kevinas.crypto_portfolio_backend.repository.HoldingRepository;
+import com.kevinas.crypto_portfolio_backend.repository.PortfolioSnapshotRepository;
+import com.kevinas.crypto_portfolio_backend.repository.TransactionRepository;
+import com.kevinas.crypto_portfolio_backend.repository.UserRepository;
 import com.kevinas.crypto_portfolio_backend.model.TransactionType;
 import com.kevinas.crypto_portfolio_backend.service.MarketDataService;
 import org.junit.jupiter.api.Test;
@@ -16,8 +21,10 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 
 import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -36,6 +43,21 @@ class TransactionControllerIntegrationTest {
 
     @org.springframework.beans.factory.annotation.Autowired
     private MarketDataService marketDataService;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private CoinRepository coinRepository;
+
+    @Autowired
+    private HoldingRepository holdingRepository;
+
+    @Autowired
+    private TransactionRepository transactionRepository;
+
+    @Autowired
+    private PortfolioSnapshotRepository portfolioSnapshotRepository;
 
     private String getJwtToken(String email, String password) throws Exception {
         RegisterRequest registerRequest = new RegisterRequest(email, password);
@@ -139,6 +161,34 @@ class TransactionControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(sellRequest)))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    void failedSell_shouldRollbackTransactionHoldingCoinAndSnapshotWrites() throws Exception {
+        String email = "rollbacktransaction@example.com";
+        String token = getJwtToken(email, "password");
+
+        TransactionRequest sellRequest = new TransactionRequest(
+                "ROLLBACK",
+                "Rollback Coin",
+                TransactionType.SELL,
+                new BigDecimal("1.00000000"),
+                new BigDecimal("60000.00")
+        );
+
+        mockMvc.perform(post("/api/transactions")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(sellRequest)))
+                .andExpect(status().isConflict());
+
+        var user = userRepository.findByEmail(email).orElseThrow();
+        assertThat(coinRepository.findBySymbolIgnoreCase("ROLLBACK")).isEmpty();
+        assertThat(holdingRepository.findByUser(user)).isEmpty();
+        assertThat(transactionRepository.findByUserOrderByCreatedAtDesc(user)).isEmpty();
+        assertThat(portfolioSnapshotRepository
+                .findByUserAndSnapshotAtGreaterThanEqualOrderBySnapshotAtAsc(user, Instant.EPOCH))
+                .isEmpty();
     }
 
     @Test

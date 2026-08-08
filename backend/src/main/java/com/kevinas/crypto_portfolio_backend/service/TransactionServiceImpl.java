@@ -4,6 +4,7 @@ import com.kevinas.crypto_portfolio_backend.dto.PaginatedTransactionsResponse;
 import com.kevinas.crypto_portfolio_backend.dto.TransactionRequest;
 import com.kevinas.crypto_portfolio_backend.dto.TransactionResponse;
 import com.kevinas.crypto_portfolio_backend.dto.TransactionSummaryResponse;
+import com.kevinas.crypto_portfolio_backend.event.TransactionCreatedEvent;
 import com.kevinas.crypto_portfolio_backend.exception.InsufficientHoldingsException;
 import com.kevinas.crypto_portfolio_backend.model.Coin;
 import com.kevinas.crypto_portfolio_backend.model.Holding;
@@ -20,6 +21,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -35,7 +37,7 @@ public class TransactionServiceImpl implements TransactionService {
     private final HoldingRepository holdingRepository;
     private final CoinRepository coinRepository;
     private final UserRepository userRepository;
-    private final PortfolioService portfolioService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -76,7 +78,7 @@ public class TransactionServiceImpl implements TransactionService {
                 .build();
 
         Transaction saved = transactionRepository.save(transaction);
-        safelyCreateSnapshot();
+        eventPublisher.publishEvent(new TransactionCreatedEvent(saved.getId(), user.getId()));
 
         return toResponse(saved);
     }
@@ -195,15 +197,6 @@ public class TransactionServiceImpl implements TransactionService {
                 scaleMoney(transaction.getRealisedProfitUsd()),
                 transaction.getCreatedAt()
         );
-    }
-
-
-    private void safelyCreateSnapshot() {
-        try {
-            portfolioService.createSnapshotForCurrentUser();
-        } catch (RuntimeException ignored) {
-            // Snapshotting is best-effort and should not fail transaction writes.
-        }
     }
 
     private User getCurrentUser() {

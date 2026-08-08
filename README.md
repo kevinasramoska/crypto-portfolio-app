@@ -13,7 +13,7 @@ The app is transaction-driven. Users write transactions, the backend updates sto
 | Security | Spring Security, JWT, BCrypt |
 | Database | PostgreSQL, Spring Data JPA, Hibernate, Flyway |
 | Market data | CoinGecko-compatible API via `RestTemplate` |
-| Backend tests | JUnit 5, Spring Boot Test, MockMvc, Mockito, H2 |
+| Backend tests | JUnit 5, Spring Boot Test, MockMvc, H2, PostgreSQL Testcontainers |
 | Frontend | Next.js 16.2.9, React 19.2.7, TypeScript |
 | Styling | Tailwind CSS |
 | Frontend tests | Vitest, Testing Library, Playwright config |
@@ -31,17 +31,17 @@ The app is transaction-driven. Users write transactions, the backend updates sto
 - Show unsupported market-data states instead of treating missing prices as real zero values.
 - Paginate transaction history and export all transactions as CSV.
 - Show portfolio summary, holdings, asset allocation, transaction summary, and performance history.
-- Create portfolio snapshots after transaction writes and from the scheduled snapshot job.
+- Create portfolio snapshots after transaction commits and from the scheduled snapshot job.
 
 ## Project Structure
 
 ```text
 .
 ├── README.md
-├── REPO_OVERVIEW.md
-├── tasklist.MD
 ├── .env.example
+├── .github/workflows/ci.yml
 ├── backend/
+│   ├── Dockerfile
 │   ├── docker-compose.yml
 │   ├── pom.xml
 │   └── src/
@@ -49,6 +49,10 @@ The app is transaction-driven. Users write transactions, the backend updates sto
 │       ├── main/resources/application.yaml
 │       ├── main/resources/db/migration/
 │       └── test/
+├── docs/
+│   ├── AGENTS.md
+│   ├── REPO_OVERVIEW.md
+│   └── tasklist.MD
 └── frontend/
     ├── .env.example
     ├── package.json
@@ -143,19 +147,59 @@ Frontend default URL: `http://localhost:3000`
 | `DB_URL` | `jdbc:postgresql://localhost:5432/cryptodb` | JDBC database URL |
 | `DB_USERNAME` | `postgres` | Database username |
 | `DB_PASSWORD` | `postgres` | Database password |
-| `SERVER_PORT` | `8080` | Backend HTTP port |
-| `JWT_SECRET` | `change_this_in_real_env` | JWT HMAC signing secret; use at least 32 bytes |
+| `PORT` | — | Hosting-provider HTTP port; takes precedence over `SERVER_PORT` |
+| `SERVER_PORT` | `8080` | Local backend HTTP port fallback |
+| `JWT_SECRET` | local development default | JWT HMAC signing secret; required in the `prod` profile, must be at least 32 bytes, and is validated at startup |
 | `JWT_EXPIRATION_SECONDS` | `3600` | JWT lifetime |
+| `APP_CORS_ALLOWED_ORIGINS` | `http://localhost:3000` | Comma-separated frontend origins allowed to call the API; required in the `prod` profile |
+| `AUTH_RATE_LIMIT_MAX_REQUESTS` | `10` | Maximum login or registration attempts from one client address per auth window |
+| `AUTH_RATE_LIMIT_WINDOW_SECONDS` | `60` | Auth rate-limit window length in seconds |
+| `MARKET_RATE_LIMIT_MAX_REQUESTS` | `60` | Maximum market-data requests from one client address per market window |
+| `MARKET_RATE_LIMIT_WINDOW_SECONDS` | `60` | Market-data rate-limit window length in seconds |
 | `CRYPTO_API_BASE_URL` | `https://api.coingecko.com/api/v3` | CoinGecko-compatible market API base URL |
 | `SPRING_JPA_SHOW_SQL` | `true` | SQL logging toggle |
 | `PORTFOLIO_SNAPSHOT_FIXED_DELAY_MS` | `3600000` | Scheduled snapshot interval |
 | `PORTFOLIO_SNAPSHOT_INITIAL_DELAY_MS` | `300000` | Scheduled snapshot startup delay |
+
+Rate limits apply to `POST /api/auth/login`, `POST /api/auth/register`, and `GET /api/market/**`. Exceeded requests receive `429 Too Many Requests` with a `Retry-After` header. The limiter is in-memory and per application instance; use a shared store or edge rate limiting before scaling the API horizontally.
 
 ### Frontend
 
 | Variable | Example | Purpose |
 |---|---|---|
 | `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:8080/api` | Browser-visible backend API base URL |
+
+## Deployment
+
+The repository includes a basic deployment path using a Vercel frontend, Dockerized API, and managed PostgreSQL database.
+
+### Backend
+
+Build and run the backend image from the `backend` directory:
+
+```bash
+docker build -t crypto-portfolio-api .
+docker run --rm -p 8080:8080 \
+  -e SPRING_PROFILES_ACTIVE=prod \
+  -e DB_URL='jdbc:postgresql://<host>/<database>?sslmode=require' \
+  -e DB_USERNAME='<database-user>' \
+  -e DB_PASSWORD='<database-password>' \
+  -e JWT_SECRET='<at-least-32-byte-secret>' \
+  -e APP_CORS_ALLOWED_ORIGINS='https://<your-vercel-app>.vercel.app' \
+  crypto-portfolio-api
+```
+
+The hosting platform should provide `PORT`. The public application check is `GET /api/health` and returns `{ "status": "ok" }`. Kubernetes-style readiness and liveness probes are public at `GET /actuator/health/readiness` and `GET /actuator/health/liveness`; operational metrics are available only to authenticated users at `GET /actuator/metrics`.
+
+### Frontend
+
+Deploy `frontend/` as a Next.js project and set this production environment variable:
+
+```text
+NEXT_PUBLIC_API_BASE_URL=https://<your-api-domain>/api
+```
+
+Set the backend's `APP_CORS_ALLOWED_ORIGINS` to the exact production frontend origin. Never commit real database credentials or JWT secrets.
 
 ## API Reference
 
@@ -167,6 +211,10 @@ Authorization: Bearer <accessToken>
 
 | Method | Endpoint | Auth | Request | Response |
 |---|---|---:|---|---|
+| `GET` | `/api/health` | No | None | `{ "status": "ok" }` |
+| `GET` | `/actuator/health/readiness` | No | None | Actuator readiness status |
+| `GET` | `/actuator/health/liveness` | No | None | Actuator liveness status |
+| `GET` | `/actuator/metrics` | Yes | None | Available Micrometer metric names |
 | `POST` | `/api/auth/register` | No | `{ "email": string, "password": string }` | `{ "accessToken": string }` |
 | `POST` | `/api/auth/login` | No | `{ "email": string, "password": string }` | `{ "accessToken": string }` |
 | `GET` | `/api/market/prices?symbols=BTC,ETH` | No | Query `symbols` list | `{ "BTC": 60000.00 }` |
@@ -281,7 +329,7 @@ Unsupported symbols can still be recorded manually, but market-value fields are 
 | Backend cannot connect to DB | Confirm `docker compose up -d` is running in `backend`, port `5432` is free, and `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` match Docker defaults. |
 | Flyway or schema startup errors | Confirm the database is the expected local `cryptodb`. `V2__transaction_constraints.sql` is intentionally a no-op and should remain versioned. |
 | Port `8080` already in use | Stop the other process or run backend with `SERVER_PORT=8081`; then update `NEXT_PUBLIC_API_BASE_URL`. |
-| Port `3000` already in use | Run `npm run dev -- --port 3001`. Backend CORS currently allows `http://localhost:3000`, so changing frontend ports may require a CORS config update. |
+| Port `3000` already in use | Run `npm run dev -- --port 3001`, then set `APP_CORS_ALLOWED_ORIGINS=http://localhost:3001` for the backend. |
 | Registration/login fails with JWT key errors | Use a `JWT_SECRET` at least 32 bytes long. Very short local secrets fail JJWT HMAC validation. |
 | Prices are missing or zero | Check CoinGecko availability, rate limits, and whether the symbol exists in `/api/market/supported-coins`. Unsupported symbols are intentionally marked unavailable. |
 | Frontend cannot reach backend | Confirm `NEXT_PUBLIC_API_BASE_URL=http://localhost:8080/api`, backend is running, and browser requests are not blocked by CORS. |
@@ -289,12 +337,10 @@ Unsupported symbols can still be recorded manually, but market-value fields are 
 
 ## Known Limitations
 
-- The app is configured for local development, not production deployment.
-- Backend CORS currently allows only `http://localhost:3000`.
 - Supported market symbols are fixed in backend code and exposed through `/api/market/supported-coins`.
 - Unsupported symbols can be recorded but are excluded from known market-value totals.
-- Portfolio snapshots are best-effort after transaction writes and scheduled by the backend process; missed app uptime means missed scheduled snapshots.
+- Portfolio snapshots are best-effort after a committed transaction and scheduled by the backend process. A snapshot failure is logged but never rolls back valid transaction and holding writes; missed app uptime means missed scheduled snapshots.
+- Deployment environment promotion, database backup/restore, and rollback procedures are not documented yet.
 - There is no seed data.
-- The full-stack happy-path E2E task is still open; the Playwright script exists, but this repository still needs a final verified end-to-end run.
 - `V2__transaction_constraints.sql` is intentionally a no-op placeholder to keep existing Flyway version history stable.
 - The same project may exist in more than one local checkout; confirm you are working in `/Users/kevinasramoska/Desktop/crypto-portfolio-app` before committing.

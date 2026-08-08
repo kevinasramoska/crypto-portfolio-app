@@ -29,7 +29,7 @@ Backend:
 - Spring Boot Test
 - MockMvc (spring-boot-webmvc-test)
 - Mockito
-- Testcontainers (for future use)
+- Testcontainers with PostgreSQL
 - H2 for tests
 
 Frontend:
@@ -90,7 +90,7 @@ The app is transaction-driven.
 - Selling more than the current holding quantity must be prevented.
 - BUY transactions increase holdings and recalculate average buy price.
 - SELL transactions reduce holdings and calculate realised profit/loss.
-- Portfolio snapshots are created after transaction writes.
+- Portfolio snapshots are created in a separate transaction after transaction and holding writes commit.
 - Portfolio summary uses current market prices and user holdings.
 - Market prices are USD-based.
 
@@ -133,7 +133,8 @@ cd backend
 
 **Backend test patterns:**
 - Integration tests use `@SpringBootTest` with `@AutoConfigureMockMvc` (Spring Boot 4 feature).
-- Tests activate the `test` profile which uses `application-test.properties`: H2 in-memory database with `ddl-auto=create-drop` and Flyway disabled for isolation.
+- Most integration tests activate the `test` profile, which combines `application-test.yaml` and the test-resource overrides in `application-test.properties`: H2 in-memory database with `ddl-auto=create-drop` and Flyway disabled for isolation.
+- `PostgresDatabaseIntegrationTest` uses PostgreSQL Testcontainers with Flyway enabled and requires a Docker-compatible runtime.
 - `@Import(TestConfig.class)` provides mocked beans (e.g., `MarketDataService`) via Mockito to prevent external API calls.
 - Use `ObjectMapper` for JSON serialization in assertions.
 - Tests are isolated per-test-method; schema is recreated for each test.

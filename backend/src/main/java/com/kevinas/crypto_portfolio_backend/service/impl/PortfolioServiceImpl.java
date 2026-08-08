@@ -19,6 +19,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -87,8 +89,10 @@ public class PortfolioServiceImpl implements com.kevinas.crypto_portfolio_backen
 
 
     @Override
-    public void createSnapshotForCurrentUser() {
-        User user = getAuthenticatedUser();
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void createSnapshotForUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
         PortfolioSummaryResponse summary = computePortfolioSummary(user);
         saveSnapshot(user, summary);
     }
