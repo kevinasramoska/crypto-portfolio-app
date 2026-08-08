@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 import path from "node:path";
 
 const frontendDir = __dirname;
-const repoRoot = path.resolve(frontendDir, "../..");
+const repoRoot = path.resolve(frontendDir, "..");
 const backendDir = path.resolve(repoRoot, "backend/crypto-portfolio-backend");
 
 export default defineConfig({

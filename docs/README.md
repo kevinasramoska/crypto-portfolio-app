@@ -51,14 +51,13 @@ The app is transaction-driven. Users write transactions, the backend updates sto
 │           ├── main/resources/db/migration/
 │           └── test/
 └── frontend/
-    └── frontend/
-        ├── .env.example
-        ├── package.json
-        └── src/
-            ├── app/
-            ├── components/
-            ├── hooks/
-            └── lib/
+    ├── .env.example
+    ├── package.json
+    └── src/
+        ├── app/
+        ├── components/
+        ├── hooks/
+        └── lib/
 ```
 
 ## Local Setup
@@ -74,7 +73,7 @@ The app is transaction-driven. Users write transactions, the backend updates sto
 Frontend:
 
 ```bash
-cd frontend/frontend
+cd frontend
 cp .env.example .env.local
 ```
 
@@ -113,7 +112,7 @@ Backend default URL: `http://localhost:8080`
 ### 5. Run Frontend
 
 ```bash
-cd frontend/frontend
+cd frontend
 npm install
 npm run dev
 ```
@@ -129,12 +128,12 @@ Frontend default URL: `http://localhost:3000`
 | Run backend | `cd backend/crypto-portfolio-backend && ./mvnw spring-boot:run` |
 | Backend tests | `cd backend/crypto-portfolio-backend && ./mvnw test` |
 | Backend build | `cd backend/crypto-portfolio-backend && ./mvnw package` |
-| Run frontend | `cd frontend/frontend && npm run dev` |
-| Frontend tests | `cd frontend/frontend && npm test` |
-| Frontend lint | `cd frontend/frontend && npm run lint` |
-| Frontend build | `cd frontend/frontend && npm run build` |
-| Playwright browsers | `cd frontend/frontend && npx playwright install chromium` |
-| E2E test script | `cd frontend/frontend && npm run test:e2e` |
+| Run frontend | `cd frontend && npm run dev` |
+| Frontend tests | `cd frontend && npm test` |
+| Frontend lint | `cd frontend && npm run lint` |
+| Frontend build | `cd frontend && npm run build` |
+| Playwright browsers | `cd frontend && npx playwright install chromium` |
+| E2E test script | `cd frontend && npm run test:e2e` |
 
 ## Environment Variables
 
@@ -287,7 +286,7 @@ Unsupported symbols can still be recorded manually, but market-value fields are 
 | Registration/login fails with JWT key errors | Use a `JWT_SECRET` at least 32 bytes long. Very short local secrets fail JJWT HMAC validation. |
 | Prices are missing or zero | Check CoinGecko availability, rate limits, and whether the symbol exists in `/api/market/supported-coins`. Unsupported symbols are intentionally marked unavailable. |
 | Frontend cannot reach backend | Confirm `NEXT_PUBLIC_API_BASE_URL=http://localhost:8080/api`, backend is running, and browser requests are not blocked by CORS. |
-| E2E tests cannot launch browser | Run `cd frontend/frontend && npx playwright install chromium`. |
+| E2E tests cannot launch browser | Run `cd frontend && npx playwright install chromium`. |
 
 ## Known Limitations
 

@@ -58,18 +58,17 @@ Recent dashboard reliability work added clearer unsupported market-data display,
 │       │   └── db/migration/
 │       └── src/test/
 └── frontend/
-    └── frontend/
-        ├── .env.example
-        ├── package.json
-        ├── next.config.js
-        ├── tsconfig.json
-        ├── eslint.config.mjs
-        ├── postcss.config.js
-        ├── vitest.config.ts
-        ├── playwright.config.ts
-        ├── src/app/
-        ├── src/components/
-        ├── src/hooks/
+    ├── .env.example
+    ├── package.json
+    ├── next.config.js
+    ├── tsconfig.json
+    ├── eslint.config.mjs
+    ├── postcss.config.mjs
+    ├── vitest.config.ts
+    ├── playwright.config.ts
+    ├── src/app/
+    ├── src/components/
+    ├── src/hooks/
         └── src/lib/
 ```
 
@@ -123,7 +122,7 @@ Startup flow:
 The frontend is a Next.js app under:
 
 ```text
-frontend/frontend
+frontend
 ```
 
 The main pages are:
@@ -138,7 +137,7 @@ The main pages are:
 The frontend calls the backend through:
 
 ```text
-frontend/frontend/src/lib/api.ts
+frontend/src/lib/api.ts
 ```
 
 The browser API base URL is configured with:
@@ -225,12 +224,12 @@ Authorization: Bearer <token>
 | `TransactionServiceImpl.java` | Core buy/sell business logic |
 | `PortfolioServiceImpl.java` | Portfolio calculations and history |
 | `MarketDataServiceImpl.java` | CoinGecko integration and price cache |
-| `frontend/frontend/package.json` | Frontend dependencies and scripts |
-| `frontend/frontend/.env.example` | Frontend API URL example |
-| `frontend/frontend/src/lib/api.ts` | Frontend HTTP client |
-| `frontend/frontend/src/lib/auth.ts` | Token/profile localStorage helpers |
-| `frontend/frontend/src/app/dashboard/page.tsx` | Main dashboard screen |
-| `frontend/frontend/src/hooks/useDashboardData.ts` | Dashboard backend data loading, refresh, pagination, transaction save, and CSV export logic |
+| `frontend/package.json` | Frontend dependencies and scripts |
+| `frontend/.env.example` | Frontend API URL example |
+| `frontend/src/lib/api.ts` | Frontend HTTP client |
+| `frontend/src/lib/auth.ts` | Token/profile localStorage helpers |
+| `frontend/src/app/dashboard/page.tsx` | Main dashboard screen |
+| `frontend/src/hooks/useDashboardData.ts` | Dashboard backend data loading, refresh, pagination, transaction save, and CSV export logic |
 
 Current market-data response additions:
 
@@ -281,7 +280,7 @@ http://localhost:8080
 ### Run Frontend
 
 ```bash
-cd frontend/frontend
+cd frontend
 cp .env.example .env.local
 npm install
 npm run dev
@@ -303,21 +302,21 @@ cd backend/crypto-portfolio-backend
 ### Build Frontend
 
 ```bash
-cd frontend/frontend
+cd frontend
 npm run build
 ```
 
 ### Run Frontend Tests
 
 ```bash
-cd frontend/frontend
+cd frontend
 npm test
 ```
 
 ### Lint Frontend
 
 ```bash
-cd frontend/frontend
+cd frontend
 npm run lint
 ```
 
@@ -343,7 +342,7 @@ The backend tests use:
 Available frontend quality checks:
 
 ```bash
-cd frontend/frontend
+cd frontend
 npm test
 npm run lint
 npm run build

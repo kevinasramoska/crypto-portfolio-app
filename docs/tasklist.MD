@@ -11,7 +11,7 @@ Use this as a working backlog for the crypto portfolio tracker. Tasks are groupe
   - Risk: Medium
   - Priority: P0
   - Status: Current implementation and docs are ready for review. Remaining action is to commit from `/Users/kevinasramoska/Desktop/crypto-portfolio-app` or port changes to the other local checkout.
-  - Files likely involved: `backend/crypto-portfolio-backend/src/**`, `frontend/frontend/src/**`, `README.md`, `REPO_OVERVIEW.md`, `tasklist.MD`
+  - Files likely involved: `backend/crypto-portfolio-backend/src/**`, `frontend/src/**`, `README.md`, `REPO_OVERVIEW.md`, `tasklist.MD`
 
 - [x] Run full verification
   - Description: Run backend tests, frontend lint, and frontend build.
@@ -21,8 +21,8 @@ Use this as a working backlog for the crypto portfolio tracker. Tasks are groupe
   - Priority: P0
   - Commands:
     - `cd backend/crypto-portfolio-backend && ./mvnw test`
-    - `cd frontend/frontend && npm run lint`
-    - `cd frontend/frontend && npm run build`
+    - `cd frontend && npm run lint`
+    - `cd frontend && npm run build`
 
 - [x] Update root README with actual endpoints
   - Description: Replace outdated direct holding CRUD documentation with the current transaction-based API.
@@ -38,7 +38,7 @@ Use this as a working backlog for the crypto portfolio tracker. Tasks are groupe
   - Complexity: Low
   - Risk: Low
   - Priority: P0
-  - Files likely involved: `frontend/frontend/package-lock.json`
+  - Files likely involved: `frontend/package-lock.json`
 
 - [x] Move frontend API base URL to environment config
   - Description: Replace hardcoded `http://localhost:8080/api` with a Next.js environment variable.
@@ -46,7 +46,7 @@ Use this as a working backlog for the crypto portfolio tracker. Tasks are groupe
   - Complexity: Low
   - Risk: Low
   - Priority: P0
-  - Files likely involved: `frontend/frontend/src/lib/api.ts`, `frontend/frontend/.env.example`, docs
+  - Files likely involved: `frontend/src/lib/api.ts`, `frontend/.env.example`, docs
 
 - [x] Update `REPO_OVERVIEW.md`
   - Description: Refresh the overview so it reflects the current transaction-based frontend.
@@ -121,7 +121,7 @@ Use this as a working backlog for the crypto portfolio tracker. Tasks are groupe
   - Risk: Low
   - Priority: P3
   - Status: Completed. Timestamps now show both relative time ("2m ago", "1h ago") and absolute time (date + time) for both prices and portfolio data. Timestamps update in real-time without page refresh.
-  - Files involved: `frontend/frontend/src/app/dashboard/page.tsx`
+  - Files involved: `frontend/src/app/dashboard/page.tsx`
 
 - [x] Improve home page
   - Description: Replace the basic landing page with a cleaner app entry screen.
@@ -130,7 +130,7 @@ Use this as a working backlog for the crypto portfolio tracker. Tasks are groupe
   - Risk: Low
   - Priority: P3
   - Status: Completed with a modern hero section, feature cards with icons, statistics section, and improved CTAs.
-  - Files involved: `frontend/frontend/src/app/page.tsx`
+  - Files involved: `frontend/src/app/page.tsx`
 
 - [x] Add transaction pagination
   - Description: Paginate backend and frontend transaction history.
@@ -214,7 +214,7 @@ Use this as a working backlog for the crypto portfolio tracker. Tasks are groupe
   - Complexity: Low
   - Risk: Low
   - Priority: P1
-  - Files likely involved: `.env.example`, `frontend/frontend/.env.example`, docs
+  - Files likely involved: `.env.example`, `frontend/.env.example`, docs
   - Status: Completed. Added a root `.env.example` for backend/full-stack local values and clarified the existing frontend `.env.example`.
 
 - [x] Add API reference table
@@ -260,7 +260,7 @@ Use this as a working backlog for the crypto portfolio tracker. Tasks are groupe
   - Complexity: Medium
   - Risk: Medium
   - Priority: P1
-  - Files likely involved: `frontend/frontend/src/**`, `frontend/frontend/package.json`
+  - Files likely involved: `frontend/src/**`, `frontend/package.json`
   - Status: Completed with a minimal Vitest + Testing Library setup and smoke coverage for dashboard rendering, login/register form behavior, and transaction form validation.
 
 - [x] Add API client tests
@@ -269,7 +269,7 @@ Use this as a working backlog for the crypto portfolio tracker. Tasks are groupe
   - Complexity: Medium
   - Risk: Low
   - Priority: P2
-  - Files likely involved: `frontend/frontend/src/lib/api.ts`
+  - Files likely involved: `frontend/src/lib/api.ts`
   - Status: Completed with `api.test.ts` coverage for 401 auth-session clearing, holdings number coercion, and transaction error-message parsing/fallback behavior.
 
 - [x] Add backend test for unsupported market symbols
@@ -368,5 +368,5 @@ Use this as a working backlog for the crypto portfolio tracker. Tasks are groupe
   - Complexity: Medium
   - Risk: Medium
   - Priority: P3
-  - Files likely involved: `frontend/frontend/package.json`, `frontend/frontend/package-lock.json`
+  - Files likely involved: `frontend/package.json`, `frontend/package-lock.json`
   - Status: Completed. Reviewed the installed frontend dependency graph, kept the React 19 runtime/types alignment, and pinned `next` to `16.2.9` so it stays in lockstep with `eslint-config-next@16.2.9`.

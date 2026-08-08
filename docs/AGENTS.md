@@ -49,7 +49,7 @@ Backend:
 - `backend/crypto-portfolio-backend`
 
 Frontend:
-- `frontend/frontend`
+- `frontend`
 
 Important backend folders:
 - `controller` = REST endpoints
