@@ -36,6 +36,12 @@ function formatDate(value: string) {
   return date.toLocaleString();
 }
 
+function profitLossClass(value: number) {
+  if (value > 0) return "text-emerald-300";
+  if (value < 0) return "text-red-300";
+  return "text-gray-300";
+}
+
 export default function TransactionsTable({
   transactions,
   loading,
@@ -94,7 +100,7 @@ export default function TransactionsTable({
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-gray-800" data-testid="transactions-table">
+      <div className="overflow-x-auto rounded-xl border border-gray-800 bg-gray-950/40 shadow-sm" data-testid="transactions-table">
         <table className="w-full min-w-[780px] table-auto">
           <thead className="bg-gray-900/80 text-left text-xs uppercase tracking-wider text-gray-400">
             <tr>
@@ -111,7 +117,7 @@ export default function TransactionsTable({
             {transactions.map(transaction => (
               <tr
                 key={transaction.id}
-                className="border-t border-gray-900/40"
+                className="border-t border-gray-800/70 transition-colors hover:bg-purple-500/5"
                 data-testid={`transaction-row-${transaction.symbol}-${transaction.type.toLowerCase()}`}
               >
                 <td className="px-6 py-4 text-gray-300">{formatDate(transaction.createdAt)}</td>
@@ -130,10 +136,12 @@ export default function TransactionsTable({
                   <div className="font-semibold">{transaction.symbol}</div>
                   <div className="text-xs text-gray-500">{transaction.name}</div>
                 </td>
-                <td className="px-6 py-4 text-right">{formatQuantity(transaction.quantity)}</td>
-                <td className="px-6 py-4 text-right">{currencyFormatter.format(transaction.priceUsd)}</td>
-                <td className="px-6 py-4 text-right">{currencyFormatter.format(transaction.totalValueUsd)}</td>
-                <td className="px-6 py-4 text-right">{currencyFormatter.format(transaction.realisedProfitUsd)}</td>
+                <td className="px-6 py-4 text-right tabular-nums">{formatQuantity(transaction.quantity)}</td>
+                <td className="px-6 py-4 text-right tabular-nums">{currencyFormatter.format(transaction.priceUsd)}</td>
+                <td className="px-6 py-4 text-right tabular-nums">{currencyFormatter.format(transaction.totalValueUsd)}</td>
+                <td className={`px-6 py-4 text-right font-medium tabular-nums ${profitLossClass(transaction.realisedProfitUsd)}`}>
+                  {currencyFormatter.format(transaction.realisedProfitUsd)}
+                </td>
               </tr>
             ))}
           </tbody>

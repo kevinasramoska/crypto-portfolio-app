@@ -17,6 +17,15 @@ function formatCurrency(value?: number) {
   return currencyFormatter.format(value ?? 0);
 }
 
+function profitLossClass(value?: number) {
+  if (!value) return "text-white";
+  return value > 0 ? "text-emerald-300" : "text-red-300";
+}
+
+function signedCurrency(value: number) {
+  return `${value > 0 ? "+" : value < 0 ? "-" : ""}${formatCurrency(Math.abs(value))}`;
+}
+
 export default function PortfolioSummaryCards({ summary, loading }: Props) {
   const hasUnsupportedMarketData = summary?.hasUnsupportedMarketData ?? false;
   const cards = [
@@ -34,21 +43,19 @@ export default function PortfolioSummaryCards({ summary, loading }: Props) {
       label: "Unrealised P/L",
       value: formatCurrency(summary?.totalUnrealisedProfitLossUsd),
       helper: "Open position result",
+      valueClassName: profitLossClass(summary?.totalUnrealisedProfitLossUsd),
     },
     {
       label: "Realised P/L",
       value: formatCurrency(summary?.totalRealisedProfitLossUsd),
       helper: "Closed trade result",
+      valueClassName: profitLossClass(summary?.totalRealisedProfitLossUsd),
     },
     {
       label: "Total P/L",
       value: formatCurrency(summary?.totalProfitLossUsd),
       helper: "Realised plus unrealised",
-    },
-    {
-      label: "Realised vs Unrealised",
-      value: "",
-      helper: "Breakdown of closed vs open P/L",
+      valueClassName: profitLossClass(summary?.totalProfitLossUsd),
     },
     {
       label: "Assets",
@@ -83,67 +90,61 @@ export default function PortfolioSummaryCards({ summary, loading }: Props) {
             data-testid={`portfolio-card-${card.label.toLowerCase().replaceAll(/[^a-z0-9]+/g, "-")}`}
           >
             <p className="text-xs uppercase tracking-wide text-gray-500">{card.label}</p>
-            {card.label === "Realised vs Unrealised" ? (
-              // custom breakdown view
-              <div className="mt-3">
-                {summary ? (
-                  (() => {
-                    const realised = summary.totalRealisedProfitLossUsd ?? 0;
-                    const unrealised = summary.totalUnrealisedProfitLossUsd ?? 0;
-                    const absReal = Math.abs(realised);
-                    const absUnreal = Math.abs(unrealised);
-                    const totalAbs = absReal + absUnreal || 1;
-                    const realisedPct = Math.round((absReal / totalAbs) * 100);
-                    const unrealPct = 100 - realisedPct;
-
-                    const realisedSign = realised >= 0 ? "+" : "-";
-                    const unrealSign = unrealised >= 0 ? "+" : "-";
-
-                    return (
-                      <div>
-                        <div className="h-3 w-full rounded-full bg-gray-900/50 overflow-hidden">
-                          <div
-                            className="h-full bg-emerald-500"
-                            style={{ width: `${realisedPct}%` }}
-                            aria-hidden
-                          />
-                          <div
-                            className="h-full bg-violet-600"
-                            style={{ width: `${unrealPct}%`, marginLeft: `-${unrealPct}%` }}
-                            aria-hidden
-                          />
-                        </div>
-
-                        <div className="mt-3 flex items-center justify-between text-sm text-gray-300">
-                          <div className="flex items-center gap-2">
-                            <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
-                            <span>Realised</span>
-                            <span className="ml-2 font-semibold text-white">{realisedSign}{formatCurrency(Math.abs(realised))}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="inline-block h-2 w-2 rounded-full bg-violet-600" />
-                            <span>Unrealised</span>
-                            <span className="ml-2 font-semibold text-white">{unrealSign}{formatCurrency(Math.abs(unrealised))}</span>
-                          </div>
-                        </div>
-                        <div className="mt-1 text-xs text-gray-500">Shows relative contribution to total P/L</div>
-                      </div>
-                    );
-                  })()
-                ) : (
-                  <p className="mt-3 text-2xl font-semibold text-white">—</p>
-                )}
-              </div>
-            ) : (
-              <>
-                <p className="mt-3 text-2xl font-semibold text-white" data-testid="portfolio-card-value">
-                  {card.value}
-                </p>
-                <p className="mt-2 text-sm text-gray-500">{card.helper}</p>
-              </>
-            )}
+            <p
+              className={`mt-3 text-2xl font-semibold ${card.valueClassName ?? "text-white"}`}
+              data-testid="portfolio-card-value"
+            >
+              {card.value}
+            </p>
+            <p className="mt-2 text-sm text-gray-500">{card.helper}</p>
           </div>
         ))}
+      </div>
+
+      <ProfitLossBreakdown summary={summary} />
+    </div>
+  );
+}
+
+function ProfitLossBreakdown({ summary }: { summary: PortfolioSummary | null }) {
+  if (!summary) {
+    return (
+      <div className="rounded-xl border border-gray-800 bg-gray-950/60 p-5">
+        <p className="text-xs uppercase tracking-wide text-gray-500">Realised vs unrealised</p>
+        <p className="mt-3 text-sm text-gray-500">Your profit and loss breakdown will appear once portfolio data is available.</p>
+      </div>
+    );
+  }
+
+  const realised = summary.totalRealisedProfitLossUsd ?? 0;
+  const unrealised = summary.totalUnrealisedProfitLossUsd ?? 0;
+  const totalAbsoluteValue = Math.abs(realised) + Math.abs(unrealised);
+  const realisedWidth = totalAbsoluteValue ? (Math.abs(realised) / totalAbsoluteValue) * 100 : 50;
+  const unrealisedWidth = totalAbsoluteValue ? 100 - realisedWidth : 50;
+
+  return (
+    <div className="rounded-xl border border-gray-800 bg-gray-950/60 p-5">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+        <p className="text-xs uppercase tracking-wide text-gray-500">Realised vs unrealised</p>
+        <p className="text-xs text-gray-500">Share of absolute profit and loss</p>
+      </div>
+      <div
+        className="mt-4 flex h-3 overflow-hidden rounded-full bg-gray-900"
+        aria-label={`Realised ${signedCurrency(realised)}. Unrealised ${signedCurrency(unrealised)}.`}
+        role="img"
+      >
+        <div className={realised >= 0 ? "bg-emerald-500" : "bg-red-500"} style={{ width: `${realisedWidth}%` }} />
+        <div className={unrealised >= 0 ? "bg-emerald-400" : "bg-red-400"} style={{ width: `${unrealisedWidth}%` }} />
+      </div>
+      <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+        <div className="flex items-center justify-between gap-3 rounded-lg bg-gray-900/60 px-3 py-2">
+          <span className="text-gray-400">Realised</span>
+          <span className={`font-semibold ${profitLossClass(realised)}`}>{signedCurrency(realised)}</span>
+        </div>
+        <div className="flex items-center justify-between gap-3 rounded-lg bg-gray-900/60 px-3 py-2">
+          <span className="text-gray-400">Unrealised</span>
+          <span className={`font-semibold ${profitLossClass(unrealised)}`}>{signedCurrency(unrealised)}</span>
+        </div>
       </div>
     </div>
   );

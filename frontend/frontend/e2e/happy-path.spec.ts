@@ -27,8 +27,8 @@ test("registers, logs in, creates a transaction, and shows dashboard data", asyn
   await expect(page.getByText("Portfolio summary")).toBeVisible();
 
   await page.getByLabel("Coin").selectOption("BTC");
-  await expect(page.getByLabel("Symbol")).toHaveValue("BTC");
-  await expect(page.getByLabel("Name")).toHaveValue("Bitcoin");
+  await expect(page.getByLabel("Symbol", { exact: true })).toHaveValue("BTC");
+  await expect(page.getByLabel("Name", { exact: true })).toHaveValue("Bitcoin");
 
   await page.getByLabel("Quantity").fill("1");
   await page.getByLabel("Price USD").fill("50000");

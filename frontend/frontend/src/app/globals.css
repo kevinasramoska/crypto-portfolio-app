@@ -19,5 +19,32 @@
 }
 
 body {
-  @apply bg-white text-black;
+  @apply bg-[#0d0d0d] text-gray-100 antialiased;
+  background-image:
+    radial-gradient(circle at top, rgb(126 34 206 / 0.13), transparent 34rem),
+    radial-gradient(circle at 85% 30%, rgb(59 130 246 / 0.06), transparent 25rem);
+}
+
+::selection {
+  background: rgb(168 85 247 / 0.45);
+  color: white;
+}
+
+input,
+select {
+  color-scheme: dark;
+}
+
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-purple-400);
+    outline-offset: 3px;
+  }
+
+  button,
+  a,
+  input,
+  select {
+    -webkit-tap-highlight-color: transparent;
+  }
 }

@@ -71,7 +71,7 @@ export default function WatchlistControls({ watchlist, onAdd, onRemove, disabled
   const availableSymbols = useMemo(() => POPULAR_SYMBOLS.filter(sym => !watchlist.includes(sym)), [watchlist]);
 
   return (
-    <div className="rounded-2xl border border-gray-800 bg-gray-950/60 p-5 space-y-4">
+    <div className="space-y-4 rounded-2xl border border-gray-800 bg-gray-950/70 p-5 shadow-lg shadow-black/10">
       <div className="grid gap-4 md:grid-cols-2">
         <form onSubmit={handleSubmit} className="space-y-2">
           <label className="text-xs uppercase tracking-wide text-gray-500" htmlFor="watchlist-input">
@@ -82,7 +82,7 @@ export default function WatchlistControls({ watchlist, onAdd, onRemove, disabled
               id="watchlist-input"
               type="text"
               placeholder="BTC"
-              className="w-32 rounded-lg border border-gray-800 bg-gray-900/60 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-purple-500 focus:outline-hidden"
+              className="w-32 rounded-lg border border-gray-800 bg-gray-900/70 px-3 py-2 text-sm text-white placeholder:text-gray-500 transition focus:border-purple-500 focus:outline-hidden focus:ring-2 focus:ring-purple-500/15"
               value={input}
               onChange={event => setInput(event.target.value)}
               disabled={disabled}
@@ -95,7 +95,7 @@ export default function WatchlistControls({ watchlist, onAdd, onRemove, disabled
               Add
             </button>
           </div>
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {error && <p className="text-sm text-red-300" role="alert">{error}</p>}
         </form>
 
         <div className="space-y-2">
@@ -104,7 +104,7 @@ export default function WatchlistControls({ watchlist, onAdd, onRemove, disabled
           </label>
           <select
             id="watchlist-dropdown"
-            className="w-full rounded-lg border border-gray-800 bg-gray-900/60 px-3 py-2 text-sm text-white focus:border-purple-500 focus:outline-hidden"
+            className="w-full rounded-lg border border-gray-800 bg-gray-900/70 px-3 py-2 text-sm text-white transition focus:border-purple-500 focus:outline-hidden focus:ring-2 focus:ring-purple-500/15"
             onChange={handleDropdownChange}
             disabled={disabled || availableSymbols.length === 0}
             defaultValue=""
@@ -116,12 +116,14 @@ export default function WatchlistControls({ watchlist, onAdd, onRemove, disabled
               </option>
             ))}
           </select>
-          {dropdownError && <p className="text-sm text-red-400">{dropdownError}</p>}
+          {dropdownError && <p className="text-sm text-red-300" role="alert">{dropdownError}</p>}
         </div>
       </div>
 
       {watchlist.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div>
+          <p className="mb-2 text-xs text-gray-500">Click a symbol to remove it from your watchlist.</p>
+          <div className="flex flex-wrap gap-2">
           {watchlist.map(symbol => (
             <button
               key={symbol}
@@ -134,6 +136,7 @@ export default function WatchlistControls({ watchlist, onAdd, onRemove, disabled
               {symbol}
             </button>
           ))}
+          </div>
         </div>
       )}
     </div>

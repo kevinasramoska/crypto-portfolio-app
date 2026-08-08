@@ -71,6 +71,7 @@ describe("DashboardPage", () => {
   });
 
   it("renders the dashboard shell and loads core data", async () => {
+    window.localStorage.setItem("token", "test-token");
     render(<DashboardPage />);
 
     expect(screen.getByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
@@ -82,5 +83,14 @@ describe("DashboardPage", () => {
       expect(apiMocks.getTransactionsPaginated).toHaveBeenCalled();
       expect(apiMocks.getPortfolioPerformanceHistory).toHaveBeenCalledWith("30d");
     });
+  });
+
+  it("shows the sign-in prompt without requesting protected data for guests", async () => {
+    render(<DashboardPage />);
+
+    expect(await screen.findByText("Create an account to track your own holdings.")).toBeInTheDocument();
+    expect(apiMocks.getPortfolioSummary).not.toHaveBeenCalled();
+    expect(apiMocks.getTransactionsPaginated).not.toHaveBeenCalled();
+    expect(apiMocks.getPortfolioPerformanceHistory).not.toHaveBeenCalled();
   });
 });

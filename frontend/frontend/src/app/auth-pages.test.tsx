@@ -52,4 +52,17 @@ describe("auth pages", () => {
 
     expect(await screen.findByText("Passwords do not match.")).toBeInTheDocument();
   });
+
+  it("requires an eight-character password before registering", async () => {
+    render(<RegisterPage />);
+
+    fireEvent.change(screen.getByLabelText("First name"), { target: { value: "Ada" } });
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "ada@example.com" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "short" } });
+    fireEvent.change(screen.getByLabelText("Confirm password"), { target: { value: "short" } });
+    fireEvent.click(screen.getByRole("button", { name: "Register" }));
+
+    expect(await screen.findByText("Password must be at least 8 characters.")).toBeInTheDocument();
+    expect(registerMock).not.toHaveBeenCalled();
+  });
 });
