@@ -2,7 +2,6 @@ package com.kevinas.crypto_portfolio_backend.integration;
 
 import com.kevinas.crypto_portfolio_backend.config.TestConfig;
 import com.kevinas.crypto_portfolio_backend.dto.SupportedCoinResponse;
-import com.kevinas.crypto_portfolio_backend.service.MarketDataService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,13 +21,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Import(TestConfig.class)
 @ActiveProfiles("test")
-class MarketDataControllerIntegrationTest {
+class MarketDataControllerIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
     private MockMvc mockMvc;
-
-    @Autowired
-    private MarketDataService marketDataService;
 
     @Test
     void health_shouldBeAvailableWithoutAuthentication() throws Exception {

@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kevinas.crypto_portfolio_backend.config.TestConfig;
 import com.kevinas.crypto_portfolio_backend.dto.*;
         import com.kevinas.crypto_portfolio_backend.model.TransactionType;
-import com.kevinas.crypto_portfolio_backend.service.MarketDataService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -25,16 +24,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Import(TestConfig.class)
 @ActiveProfiles("test")
-class PortfolioSummaryIntegrationTest {
+class PortfolioSummaryIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
     private ObjectMapper objectMapper;
-
-    @org.springframework.beans.factory.annotation.Autowired
-    private MarketDataService marketDataService;
 
     private String getJwtToken(String email, String password) throws Exception {
         RegisterRequest registerRequest = new RegisterRequest(email, password);

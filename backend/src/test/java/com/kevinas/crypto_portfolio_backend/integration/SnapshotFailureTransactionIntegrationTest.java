@@ -39,7 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Import({TestConfig.class, SnapshotFailureTransactionIntegrationTest.SnapshotFailureConfig.class})
 @ActiveProfiles("test")
-class SnapshotFailureTransactionIntegrationTest {
+class SnapshotFailureTransactionIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
     private MockMvc mockMvc;

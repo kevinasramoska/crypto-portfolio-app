@@ -12,7 +12,6 @@ import com.kevinas.crypto_portfolio_backend.repository.CoinRepository;
 import com.kevinas.crypto_portfolio_backend.repository.HoldingRepository;
 import com.kevinas.crypto_portfolio_backend.repository.TransactionRepository;
 import com.kevinas.crypto_portfolio_backend.repository.UserRepository;
-import com.kevinas.crypto_portfolio_backend.service.MarketDataService;
 import com.kevinas.crypto_portfolio_backend.service.TransactionService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -45,7 +44,7 @@ import static org.mockito.Mockito.when;
         "portfolio.snapshots.scheduling.initial-delay-ms=86400000"
 })
 @Import(TestConfig.class)
-class PostgresDatabaseIntegrationTest {
+class PostgresDatabaseIntegrationTest extends IntegrationTestSupport {
 
     @Container
     static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(DockerImageName.parse("postgres:16-alpine"));
@@ -74,9 +73,6 @@ class PostgresDatabaseIntegrationTest {
 
     @Autowired
     private TransactionService transactionService;
-
-    @Autowired
-    private MarketDataService marketDataService;
 
     @AfterEach
     void clearSecurityContext() {

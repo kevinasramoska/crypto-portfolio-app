@@ -23,7 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Import(TestConfig.class)
 @ActiveProfiles("test")
-class OperationalEndpointsIntegrationTest {
+class OperationalEndpointsIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
     private MockMvc mockMvc;

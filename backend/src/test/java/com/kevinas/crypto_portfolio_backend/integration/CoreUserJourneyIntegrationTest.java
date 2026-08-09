@@ -8,7 +8,6 @@ import com.kevinas.crypto_portfolio_backend.repository.HoldingRepository;
 import com.kevinas.crypto_portfolio_backend.repository.PortfolioSnapshotRepository;
 import com.kevinas.crypto_portfolio_backend.repository.TransactionRepository;
 import com.kevinas.crypto_portfolio_backend.repository.UserRepository;
-import com.kevinas.crypto_portfolio_backend.service.MarketDataService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Import(TestConfig.class)
 @ActiveProfiles("test")
-class CoreUserJourneyIntegrationTest {
+class CoreUserJourneyIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
     private MockMvc mockMvc;
@@ -53,9 +52,6 @@ class CoreUserJourneyIntegrationTest {
 
     @Autowired
     private UserRepository userRepository;
-
-    @org.springframework.beans.factory.annotation.Autowired
-    private MarketDataService marketDataService;
 
     @BeforeEach
     void setUp() {
