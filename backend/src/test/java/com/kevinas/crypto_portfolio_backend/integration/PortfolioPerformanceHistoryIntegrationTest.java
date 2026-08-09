@@ -11,12 +11,10 @@ import com.kevinas.crypto_portfolio_backend.model.TransactionType;
 import com.kevinas.crypto_portfolio_backend.model.User;
 import com.kevinas.crypto_portfolio_backend.repository.PortfolioSnapshotRepository;
 import com.kevinas.crypto_portfolio_backend.repository.UserRepository;
-import com.kevinas.crypto_portfolio_backend.service.MarketDataService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-// @MockBean is not available in Spring Boot 4 test artifacts; a test configuration provides a Mockito mock instead
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
@@ -36,7 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Import(TestConfig.class)
 @ActiveProfiles("test")
-class PortfolioPerformanceHistoryIntegrationTest {
+class PortfolioPerformanceHistoryIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
     private MockMvc mockMvc;
@@ -49,9 +47,6 @@ class PortfolioPerformanceHistoryIntegrationTest {
 
     @Autowired
     private PortfolioSnapshotRepository portfolioSnapshotRepository;
-
-    @org.springframework.beans.factory.annotation.Autowired
-    private MarketDataService marketDataService;
 
     private String getJwtToken(String email, String password) throws Exception {
         RegisterRequest registerRequest = new RegisterRequest(email, password);
