@@ -53,8 +53,8 @@ class PortfolioHistoryServiceImplTest {
                 .totalProfitLossUsd(new BigDecimal("20.00"))
                 .build();
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(transactionRepository.existsByUser(user)).thenReturn(true);
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(user));
+        when(transactionRepository.existsByUserAndVoidedAtIsNull(user)).thenReturn(true);
         when(portfolioSnapshotRepository.existsByUserAndSnapshotAtBetween(
                 org.mockito.ArgumentMatchers.eq(user),
                 org.mockito.ArgumentMatchers.any(Instant.class),
@@ -86,8 +86,10 @@ class PortfolioHistoryServiceImplTest {
                 .build();
 
         when(userRepository.findAll()).thenReturn(List.of(withTransactions, withoutTransactions));
-        when(transactionRepository.existsByUser(withTransactions)).thenReturn(true);
-        when(transactionRepository.existsByUser(withoutTransactions)).thenReturn(false);
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(withTransactions));
+        when(userRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(withoutTransactions));
+        when(transactionRepository.existsByUserAndVoidedAtIsNull(withTransactions)).thenReturn(true);
+        when(transactionRepository.existsByUserAndVoidedAtIsNull(withoutTransactions)).thenReturn(false);
         when(portfolioSnapshotRepository.existsByUserAndSnapshotAtBetween(
                 org.mockito.ArgumentMatchers.eq(withTransactions),
                 org.mockito.ArgumentMatchers.any(Instant.class),
@@ -111,8 +113,8 @@ class PortfolioHistoryServiceImplTest {
                 .toInstant();
         Instant endOfDay = startOfDay.plus(1, ChronoUnit.DAYS);
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(transactionRepository.existsByUser(user)).thenReturn(true);
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(user));
+        when(transactionRepository.existsByUserAndVoidedAtIsNull(user)).thenReturn(true);
         when(portfolioSnapshotRepository.existsByUserAndSnapshotAtBetween(user, startOfDay, endOfDay)).thenReturn(true);
 
         portfolioHistoryService.captureSnapshotForUser(1L);

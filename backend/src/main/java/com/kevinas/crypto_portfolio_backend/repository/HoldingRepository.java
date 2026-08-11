@@ -12,4 +12,5 @@ public interface HoldingRepository extends JpaRepository<Holding, Long> {
     // Transaction history remains the audit log and realised P/L source.
     List<Holding> findByUser(User user);
     Optional<Holding> findByUserAndCoin_SymbolIgnoreCase(User user, String symbol);
+    void deleteAllByUser(User user);
 }

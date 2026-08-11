@@ -167,19 +167,14 @@ Authorization: Bearer <token>
 
 ### Transaction Flow
 
-1. Authenticated user submits a BUY or SELL transaction to `POST /api/transactions`.
-2. Backend resolves or creates the `Coin`.
-3. For BUY:
-   - Creates or updates the user's `Holding`.
-   - Recalculates average buy price.
-4. For SELL:
-   - Verifies the user has enough quantity.
-   - Reduces or deletes the holding.
-   - Calculates realised profit/loss.
-5. Backend saves the `Transaction` in the same database transaction as the holding update.
-6. After that transaction commits, an `AFTER_COMMIT` listener attempts a portfolio snapshot in a separate transaction.
-7. Snapshot failure is logged but does not invalidate the committed transaction or holding state.
-8. Backend returns the transaction response.
+1. Authenticated users create, edit, or delete ledger entries through `/api/transactions`.
+2. Every mutation takes a pessimistic lock on the user's row, so creates, edits, and deletes for one user are serialized.
+3. New transactions receive the next immutable per-user `ledgerSequence`.
+4. Edits soft-void the active row and create a replacement with a new database ID while preserving the original `createdAt` and `ledgerSequence`; deletes soft-void without replacement.
+5. Active transactions are replayed in ledger order to recalculate weighted-average buy prices, realised P/L, and stored holdings.
+6. A replay that would make any historical `SELL` exceed the available position raises `409 Conflict` and rolls the entire mutation back.
+7. Historical snapshots at or after the changed transaction's original `createdAt` are invalidated in the same database transaction.
+8. After commit, an `AFTER_COMMIT` listener attempts a fresh portfolio snapshot in a separate transaction. Snapshot failure is logged but does not invalidate committed ledger or holding state.
 
 ### Portfolio Flow
 
@@ -259,6 +254,8 @@ Current API endpoints:
 | `GET` | `/api/portfolio/summary` | Yes | Return totals plus per-holding summary |
 | `GET` | `/api/portfolio/performance/history?range=30d` | Yes | Return snapshot history for `7d`, `30d`, or `90d` |
 | `POST` | `/api/transactions` | Yes | Create a `BUY` or `SELL` transaction |
+| `PUT` | `/api/transactions/{id}` | Yes | Replace an active transaction revision and replay the ledger |
+| `DELETE` | `/api/transactions/{id}` | Yes | Void an active transaction and replay the ledger |
 | `GET` | `/api/transactions` | Yes | Return all current-user transactions |
 | `GET` | `/api/transactions/paginated?page=0&size=20` | Yes | Return paginated current-user transactions |
 | `GET` | `/api/transactions/summary` | Yes | Return buy volume, sell volume, and realised P/L totals |
@@ -395,7 +392,7 @@ Frontend environment variables:
 - Authentication is stateless and JWT-based.
 - Most protected backend endpoints rely on the authenticated user from Spring Security context.
 - Portfolio writes happen through transactions, not direct holding CRUD.
-- Stored holdings are the source of truth for current open positions; transactions are the audit log and realised-P/L source.
+- Active transaction revisions are the audit-safe ledger; stored holdings and realised P/L are derived from replaying that ledger.
 - `GET /api/portfolio/holdings` exists, but backend `POST`, `PUT`, and `DELETE` endpoints for `/api/portfolio/holdings` are not currently present.
 - Backend prices and portfolio values are USD-oriented.
 - `V2__transaction_constraints.sql` is intentionally a no-op placeholder retained to keep Flyway version history stable.
@@ -409,6 +406,7 @@ Frontend environment variables:
 - Backend CORS defaults to `http://localhost:3000`; production must provide explicit allowed origins.
 - Auth and market-data routes use an in-memory, per-application-instance rate limiter.
 - Transaction and holding writes commit atomically; snapshot creation is best-effort after commit and also runs on a schedule.
+- Historical edits and deletes preserve voided revisions, reuse their stable ledger position, and reject corrections that would invalidate a later sell.
 - PostgreSQL Testcontainers coverage requires Docker and is run by CI.
 - No seed data is present.
 - Frontend smoke and API-client tests are configured with Vitest and Testing Library.

@@ -15,12 +15,12 @@ public class PortfolioSnapshotListener {
     private final PortfolioService portfolioService;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void createSnapshotAfterTransactionCommit(TransactionCreatedEvent event) {
+    public void createSnapshotAfterTransactionCommit(PortfolioStateChangedEvent event) {
         try {
             portfolioService.createSnapshotForUser(event.userId());
         } catch (RuntimeException exception) {
             log.warn(
-                    "Portfolio snapshot creation failed after committed transaction {} for user {}",
+                    "Portfolio snapshot creation failed after committed portfolio change {} for user {}",
                     event.transactionId(),
                     event.userId(),
                     exception

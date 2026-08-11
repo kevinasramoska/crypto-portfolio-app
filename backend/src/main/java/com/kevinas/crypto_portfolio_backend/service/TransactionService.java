@@ -25,6 +25,10 @@ public interface TransactionService {
      */
     TransactionResponse createTransaction(TransactionRequest request);
 
+    TransactionResponse updateTransaction(Long transactionId, TransactionRequest request);
+
+    void deleteTransaction(Long transactionId);
+
     /**
      * Retrieves all transactions for the authenticated user, ordered by creation date descending.
      *

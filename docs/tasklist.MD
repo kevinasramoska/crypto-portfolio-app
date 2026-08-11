@@ -53,9 +53,10 @@ This is the recommended order for the next phase of work. The sections below pre
 
 ### Phase 3: Improve The Product
 
-- [ ] Add transaction editing and deletion with audit-safe rules
+- [x] Add transaction editing and deletion with audit-safe rules
   - Priority: P1
   - Recalculate holdings and realised P/L consistently, and prevent edits that would create invalid positions.
+  - Status: Completed. Creates, edits, and deletes are serialized per user; edits preserve voided audit revisions and stable ledger order; active transactions are replayed atomically to rebuild holdings and realised P/L; historically invalid sells return `409` with full rollback; affected snapshots are invalidated and refreshed after commit; and the dashboard supports edit/delete workflows.
 - [ ] Add date/time to transactions
   - Priority: P1
   - Store an explicit transaction timestamp and use it in history, exports, and performance calculations.

@@ -16,7 +16,7 @@ class PortfolioSnapshotListenerTest {
         PortfolioService portfolioService = mock(PortfolioService.class);
         PortfolioSnapshotListener listener = new PortfolioSnapshotListener(portfolioService);
 
-        listener.createSnapshotAfterTransactionCommit(new TransactionCreatedEvent(10L, 20L));
+        listener.createSnapshotAfterTransactionCommit(new PortfolioStateChangedEvent(10L, 20L));
 
         verify(portfolioService).createSnapshotForUser(20L);
     }
@@ -29,7 +29,7 @@ class PortfolioSnapshotListenerTest {
                 .createSnapshotForUser(anyLong());
         PortfolioSnapshotListener listener = new PortfolioSnapshotListener(portfolioService);
 
-        assertDoesNotThrow(() -> listener.createSnapshotAfterTransactionCommit(new TransactionCreatedEvent(10L, 20L)));
+        assertDoesNotThrow(() -> listener.createSnapshotAfterTransactionCommit(new PortfolioStateChangedEvent(10L, 20L)));
 
         verify(portfolioService).createSnapshotForUser(20L);
     }

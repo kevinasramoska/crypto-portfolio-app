@@ -11,4 +11,5 @@ public interface PortfolioSnapshotRepository extends JpaRepository<PortfolioSnap
     List<PortfolioSnapshot> findByUserAndSnapshotAtGreaterThanEqualOrderBySnapshotAtAsc(User user, Instant from);
     boolean existsByUserAndSnapshotAtBetween(User user, Instant from, Instant to);
     List<PortfolioSnapshot> findByUserAndSnapshotAtBetweenOrderBySnapshotAtAsc(User user, Instant from, Instant to);
+    void deleteByUserAndSnapshotAtGreaterThanEqual(User user, Instant from);
 }

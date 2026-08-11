@@ -1,6 +1,8 @@
 "use client";
 
-import { Transaction } from "@/lib/types";
+import { Fragment, useState } from "react";
+import EditTransactionForm from "@/components/EditTransactionForm";
+import { Transaction, TransactionPayload } from "@/lib/types";
 
 type Props = {
   transactions: Transaction[];
@@ -15,6 +17,8 @@ type Props = {
   hasNext?: boolean;
   hasPrevious?: boolean;
   onPageChange?: (page: number) => void;
+  onEdit?: (transactionId: number, payload: TransactionPayload) => Promise<void>;
+  onDelete?: (transactionId: number) => Promise<void>;
 };
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
@@ -55,7 +59,29 @@ export default function TransactionsTable({
   hasNext = false,
   hasPrevious = false,
   onPageChange,
+  onEdit,
+  onDelete,
 }: Props) {
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [mutationError, setMutationError] = useState<string | null>(null);
+
+  async function handleDelete(transaction: Transaction) {
+    if (!onDelete || !window.confirm(`Delete the ${transaction.type} transaction for ${transaction.symbol}?`)) {
+      return;
+    }
+
+    try {
+      setDeletingId(transaction.id);
+      setMutationError(null);
+      await onDelete(transaction.id);
+    } catch (caughtError) {
+      setMutationError(caughtError instanceof Error ? caughtError.message : "Unable to delete transaction.");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   if (loading) {
     return (
       <div className="space-y-3">
@@ -87,6 +113,11 @@ export default function TransactionsTable({
 
   return (
     <div className="space-y-4">
+      {mutationError && (
+        <p role="alert" className="rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+          {mutationError}
+        </p>
+      )}
       {onExportCsv && (
         <div className="flex justify-end">
           <button
@@ -111,38 +142,82 @@ export default function TransactionsTable({
               <th className="px-6 py-3 font-semibold text-right">Price</th>
               <th className="px-6 py-3 font-semibold text-right">Total</th>
               <th className="px-6 py-3 font-semibold text-right">Realised P/L</th>
+              {(onEdit || onDelete) && <th className="px-6 py-3 font-semibold text-right">Actions</th>}
             </tr>
           </thead>
           <tbody className="bg-gray-950/40 text-sm text-gray-100">
             {transactions.map(transaction => (
-              <tr
-                key={transaction.id}
-                className="border-t border-gray-800/70 transition-colors hover:bg-purple-500/5"
-                data-testid={`transaction-row-${transaction.symbol}-${transaction.type.toLowerCase()}`}
-              >
-                <td className="px-6 py-4 text-gray-300">{formatDate(transaction.createdAt)}</td>
-                <td className="px-6 py-4">
-                  <span
-                    className={
-                      transaction.type === "BUY"
-                        ? "rounded-full border border-emerald-500/40 px-2.5 py-1 text-xs font-semibold text-emerald-300"
-                        : "rounded-full border border-amber-500/40 px-2.5 py-1 text-xs font-semibold text-amber-300"
-                    }
-                  >
-                    {transaction.type}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="font-semibold">{transaction.symbol}</div>
-                  <div className="text-xs text-gray-500">{transaction.name}</div>
-                </td>
-                <td className="px-6 py-4 text-right tabular-nums">{formatQuantity(transaction.quantity)}</td>
-                <td className="px-6 py-4 text-right tabular-nums">{currencyFormatter.format(transaction.priceUsd)}</td>
-                <td className="px-6 py-4 text-right tabular-nums">{currencyFormatter.format(transaction.totalValueUsd)}</td>
-                <td className={`px-6 py-4 text-right font-medium tabular-nums ${profitLossClass(transaction.realisedProfitUsd)}`}>
-                  {currencyFormatter.format(transaction.realisedProfitUsd)}
-                </td>
-              </tr>
+              <Fragment key={transaction.id}>
+                <tr
+                  className="border-t border-gray-800/70 transition-colors hover:bg-purple-500/5"
+                  data-testid={`transaction-row-${transaction.symbol}-${transaction.type.toLowerCase()}`}
+                >
+                  <td className="px-6 py-4 text-gray-300">{formatDate(transaction.createdAt)}</td>
+                  <td className="px-6 py-4">
+                    <span
+                      className={
+                        transaction.type === "BUY"
+                          ? "rounded-full border border-emerald-500/40 px-2.5 py-1 text-xs font-semibold text-emerald-300"
+                          : "rounded-full border border-amber-500/40 px-2.5 py-1 text-xs font-semibold text-amber-300"
+                      }
+                    >
+                      {transaction.type}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="font-semibold">{transaction.symbol}</div>
+                    <div className="text-xs text-gray-500">{transaction.name}</div>
+                  </td>
+                  <td className="px-6 py-4 text-right tabular-nums">{formatQuantity(transaction.quantity)}</td>
+                  <td className="px-6 py-4 text-right tabular-nums">{currencyFormatter.format(transaction.priceUsd)}</td>
+                  <td className="px-6 py-4 text-right tabular-nums">{currencyFormatter.format(transaction.totalValueUsd)}</td>
+                  <td className={`px-6 py-4 text-right font-medium tabular-nums ${profitLossClass(transaction.realisedProfitUsd)}`}>
+                    {currencyFormatter.format(transaction.realisedProfitUsd)}
+                  </td>
+                  {(onEdit || onDelete) && (
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        {onEdit && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMutationError(null);
+                              setEditingId(transaction.id);
+                            }}
+                            className="rounded border border-gray-700 px-2.5 py-1.5 text-xs text-gray-300 hover:border-purple-500 hover:text-white"
+                          >
+                            Edit
+                          </button>
+                        )}
+                        {onDelete && (
+                          <button
+                            type="button"
+                            onClick={() => void handleDelete(transaction)}
+                            disabled={deletingId === transaction.id}
+                            className="rounded border border-red-500/40 px-2.5 py-1.5 text-xs text-red-300 hover:border-red-400 hover:text-red-200 disabled:opacity-50"
+                          >
+                            {deletingId === transaction.id ? "Deleting..." : "Delete"}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  )}
+                </tr>
+                {editingId === transaction.id && onEdit && (
+                  <tr className="border-t border-purple-500/30 bg-purple-500/5">
+                    <td colSpan={8}>
+                      <EditTransactionForm
+                        transaction={transaction}
+                        onCancel={() => setEditingId(null)}
+                        onSubmit={async payload => {
+                          await onEdit(transaction.id, payload);
+                          setEditingId(null);
+                        }}
+                      />
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
             ))}
           </tbody>
         </table>

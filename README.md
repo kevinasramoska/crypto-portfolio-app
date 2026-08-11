@@ -223,6 +223,8 @@ Authorization: Bearer <accessToken>
 | `GET` | `/api/portfolio/summary` | Yes | None | `PortfolioSummaryResponse` |
 | `GET` | `/api/portfolio/performance/history?range=30d` | Yes | Query `range`: `7d`, `30d`, `90d` | `{ "range": "30d", "history": PerformancePoint[] }` |
 | `POST` | `/api/transactions` | Yes | `TransactionRequest` | `TransactionResponse` |
+| `PUT` | `/api/transactions/{id}` | Yes | `TransactionRequest` | Replacement `TransactionResponse` |
+| `DELETE` | `/api/transactions/{id}` | Yes | None | `204 No Content` |
 | `GET` | `/api/transactions` | Yes | None | `TransactionResponse[]` |
 | `GET` | `/api/transactions/paginated?page=0&size=20` | Yes | Query `page`, `size` | `PaginatedTransactionsResponse` |
 | `GET` | `/api/transactions/summary` | Yes | None | `{ "totalBuyVolumeUsd": number, "totalSellVolumeUsd": number, "totalRealisedProfitUsd": number }` |
@@ -240,6 +242,8 @@ Authorization: Bearer <accessToken>
 ```
 
 `type` must be `BUY` or `SELL`. `quantity` must be greater than `0`; `priceUsd` must be `0` or greater. A `SELL` that exceeds the stored holding quantity returns a conflict response.
+
+Edits preserve the transaction's historical ledger position by voiding the current audit row and returning a replacement row with a new ID. Edits and deletes replay the active ledger atomically; a correction that would make any later `SELL` historically invalid returns `409 Conflict` without changing transactions, holdings, or snapshots.
 
 ### Holding Response
 

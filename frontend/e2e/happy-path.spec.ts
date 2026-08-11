@@ -60,4 +60,17 @@ test("registers, logs in, creates a transaction, and shows dashboard data", asyn
     "$10,000.00",
   );
   await expect(page.getByTestId("portfolio-card-assets")).toContainText("1");
+
+  await page.getByRole("button", { name: "Edit" }).click();
+  const editForm = page.getByRole("form", { name: "Edit BTC transaction" });
+  await editForm.getByLabel("Price USD").fill("55000");
+  await editForm.getByRole("button", { name: "Save changes" }).click();
+
+  await expect(page.getByTestId("transaction-row-BTC-buy")).toContainText("$55,000.00");
+  await expect(page.getByTestId("holding-row-BTC")).toContainText("$55,000.00");
+
+  page.once("dialog", dialog => dialog.accept());
+  await page.getByRole("button", { name: "Delete" }).click();
+  await expect(page.getByText("No transactions yet. Record a buy or sell transaction to get started.")).toBeVisible();
+  await expect(page.getByText("No open holdings yet. Record a buy transaction to create your first position.")).toBeVisible();
 });

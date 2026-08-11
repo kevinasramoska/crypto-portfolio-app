@@ -32,6 +32,9 @@ import org.testcontainers.utility.DockerImageName;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -86,9 +89,13 @@ class PostgresDatabaseIntegrationTest extends IntegrationTestSupport {
                 Integer.class
         );
 
-        assertThat(migrationCount).isEqualTo(3);
+        assertThat(migrationCount).isEqualTo(4);
         assertThat(jdbcTemplate.queryForObject("select to_regclass('public.portfolio_snapshots')", String.class))
                 .isEqualTo("portfolio_snapshots");
+        assertThat(jdbcTemplate.queryForObject(
+                "select to_regclass('public.uq_transactions_user_active_ledger_sequence')",
+                String.class
+        )).isEqualTo("uq_transactions_user_active_ledger_sequence");
 
         jdbcTemplate.update("insert into users (email, password) values (?, ?)", "unique@example.com", "password-hash");
 
@@ -96,6 +103,45 @@ class PostgresDatabaseIntegrationTest extends IntegrationTestSupport {
                 "insert into users (email, password) values (?, ?)",
                 "unique@example.com",
                 "password-hash"
+        )).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void transactionRevisionConstraints_shouldProtectActiveLedgerAndHoldingsUniqueness() {
+        Long userId = jdbcTemplate.queryForObject(
+                "insert into users (email, password) values ('revision-constraints@example.com', 'hash') returning id",
+                Long.class
+        );
+        Long coinId = jdbcTemplate.queryForObject(
+                "insert into coins (symbol, name) values ('REVISION', 'Revision Coin') returning id",
+                Long.class
+        );
+
+        jdbcTemplate.update(
+                "insert into transactions " +
+                        "(created_at, price_usd, quantity, realised_profit_usd, total_value_usd, type, coin_id, user_id, ledger_sequence) " +
+                        "values (now(), 10.00, 1.00000000, 0.00, 10.00, 'BUY', ?, ?, 1)",
+                coinId,
+                userId
+        );
+
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "insert into transactions " +
+                        "(created_at, price_usd, quantity, realised_profit_usd, total_value_usd, type, coin_id, user_id, ledger_sequence) " +
+                        "values (now(), 10.00, 1.00000000, 0.00, 10.00, 'BUY', ?, ?, 1)",
+                coinId,
+                userId
+        )).isInstanceOf(DataIntegrityViolationException.class);
+
+        jdbcTemplate.update(
+                "insert into holdings (quantity, average_buy_price_usd, coin_id, user_id) values (1.00000000, 10.00, ?, ?)",
+                coinId,
+                userId
+        );
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "insert into holdings (quantity, average_buy_price_usd, coin_id, user_id) values (2.00000000, 10.00, ?, ?)",
+                coinId,
+                userId
         )).isInstanceOf(DataIntegrityViolationException.class);
     }
 
@@ -112,7 +158,7 @@ class PostgresDatabaseIntegrationTest extends IntegrationTestSupport {
         ))).isInstanceOf(InsufficientHoldingsException.class);
 
         assertThat(coinRepository.findBySymbolIgnoreCase("ROLLBACK")).isEmpty();
-        assertThat(transactionRepository.findByUserOrderByCreatedAtDesc(user)).isEmpty();
+        assertThat(transactionRepository.findAllRevisionsByUser(user)).isEmpty();
         assertThat(holdingRepository.findByUser(user)).isEmpty();
     }
 
@@ -130,13 +176,58 @@ class PostgresDatabaseIntegrationTest extends IntegrationTestSupport {
         ));
 
         Holding holding = holdingRepository.findByUserAndCoin_SymbolIgnoreCase(user, "DECIMAL").orElseThrow();
-        Transaction transaction = transactionRepository.findByUserOrderByCreatedAtDesc(user).getFirst();
+        Transaction transaction = transactionRepository.findAllRevisionsByUser(user).getFirst();
 
         assertThat(holding.getQuantity()).isEqualByComparingTo("0.12345679");
         assertThat(holding.getAverageBuyPriceUsd()).isEqualByComparingTo("123.46");
         assertThat(transaction.getQuantity()).isEqualByComparingTo("0.12345679");
         assertThat(transaction.getPriceUsd()).isEqualByComparingTo("123.46");
         assertThat(transaction.getTotalValueUsd()).isEqualByComparingTo("15.24");
+    }
+
+    @Test
+    void concurrentCreatesForSameUser_shouldAllocateDistinctLedgerSequencesAndPreserveHolding() throws Exception {
+        User user = createAuthenticatedUser("concurrent-ledger@example.com");
+        SecurityContextHolder.clearContext();
+        when(marketDataService.getCurrentPrice("LOCKED")).thenReturn(new BigDecimal("100.00"));
+
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var tasks = java.util.stream.IntStream.range(0, 2)
+                    .mapToObj(index -> executor.submit(() -> {
+                        SecurityContextHolder.getContext().setAuthentication(
+                                new UsernamePasswordAuthenticationToken(user.getEmail(), null)
+                        );
+                        ready.countDown();
+                        try {
+                            start.await(10, TimeUnit.SECONDS);
+                            return transactionService.createTransaction(new TransactionRequest(
+                                    "LOCKED",
+                                    "Locked Coin",
+                                    TransactionType.BUY,
+                                    new BigDecimal("1.00000000"),
+                                    new BigDecimal("100.00")
+                            ));
+                        } finally {
+                            SecurityContextHolder.clearContext();
+                        }
+                    }))
+                    .toList();
+
+            assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            for (var task : tasks) {
+                task.get(30, TimeUnit.SECONDS);
+            }
+        }
+
+        assertThat(transactionRepository.findByUserAndVoidedAtIsNullOrderByLedgerSequenceAsc(user))
+                .extracting(Transaction::getLedgerSequence)
+                .containsExactly(1L, 2L);
+        assertThat(holdingRepository.findByUserAndCoin_SymbolIgnoreCase(user, "LOCKED").orElseThrow().getQuantity())
+                .isEqualByComparingTo("2.00000000");
     }
 
     private User createAuthenticatedUser(String email) {

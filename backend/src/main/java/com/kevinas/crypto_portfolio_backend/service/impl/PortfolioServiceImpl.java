@@ -91,7 +91,7 @@ public class PortfolioServiceImpl implements com.kevinas.crypto_portfolio_backen
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void createSnapshotForUser(Long userId) {
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
         PortfolioSummaryResponse summary = computePortfolioSummary(user);
         saveSnapshot(user, summary);
@@ -119,7 +119,7 @@ public class PortfolioServiceImpl implements com.kevinas.crypto_portfolio_backen
 
     private PortfolioSummaryResponse computePortfolioSummary(User user) {
         List<Holding> holdings = holdingRepository.findByUser(user);
-        List<Transaction> transactions = transactionRepository.findByUserOrderByCreatedAtAsc(user);
+        List<Transaction> transactions = transactionRepository.findByUserAndVoidedAtIsNullOrderByLedgerSequenceAsc(user);
 
         List<PortfolioHoldingSummaryResponse> holdingSummaries = new ArrayList<>();
         BigDecimal totalInvestedUsd = BigDecimal.ZERO;

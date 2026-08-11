@@ -4,12 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 import {
   AUTH_REQUIRED_MESSAGE,
   createTransaction,
+  deleteTransaction,
   getHoldings,
   getPortfolioPerformanceHistory,
   getPortfolioSummary,
   getTransactionSummary,
   getTransactions,
   getTransactionsPaginated,
+  updateTransaction,
 } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import {
@@ -220,6 +222,25 @@ export function useDashboardData() {
     setTransactionPageNumber(newPage);
   }, []);
 
+  const handleUpdateTransaction = useCallback(
+    async (transactionId: number, payload: TransactionPayload) => {
+      await updateTransaction(transactionId, payload);
+      await refreshDashboard();
+    },
+    [refreshDashboard]
+  );
+
+  const handleDeleteTransaction = useCallback(
+    async (transactionId: number) => {
+      await deleteTransaction(transactionId);
+      if (transactions.length === 1 && transactionPageNumber > 0) {
+        setTransactionPageNumber(previousPage => previousPage - 1);
+      }
+      await refreshDashboard();
+    },
+    [refreshDashboard, transactionPageNumber, transactions.length]
+  );
+
   const handleExportTransactions = useCallback(async () => {
     try {
       setExportTransactionsLoading(true);
@@ -285,6 +306,8 @@ export function useDashboardData() {
     transactionHasPrevious,
     refreshDashboard,
     handleCreateTransaction,
+    handleUpdateTransaction,
+    handleDeleteTransaction,
     handleTransactionPageChange,
     handleExportTransactions,
   };

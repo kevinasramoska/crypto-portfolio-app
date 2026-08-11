@@ -84,6 +84,8 @@ export default function DashboardPage() {
     transactionHasPrevious,
     refreshDashboard,
     handleCreateTransaction,
+    handleUpdateTransaction,
+    handleDeleteTransaction,
     handleTransactionPageChange,
     handleExportTransactions,
   } = useDashboardData();
@@ -400,6 +402,8 @@ export default function DashboardPage() {
               hasNext={transactionHasNext}
               hasPrevious={transactionHasPrevious}
               onPageChange={handleTransactionPageChange}
+              onEdit={handleUpdateTransaction}
+              onDelete={handleDeleteTransaction}
             />
           </section>
         </>

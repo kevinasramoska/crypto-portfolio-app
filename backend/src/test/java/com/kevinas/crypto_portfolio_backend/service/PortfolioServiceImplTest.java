@@ -79,7 +79,7 @@ class PortfolioServiceImplTest {
 
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
         when(holdingRepository.findByUser(user)).thenReturn(List.of(holding(user, btc, "0.50000000", "45000.00")));
-        when(transactionRepository.findByUserOrderByCreatedAtAsc(user)).thenReturn(List.of(buyTransaction));
+        when(transactionRepository.findByUserAndVoidedAtIsNullOrderByLedgerSequenceAsc(user)).thenReturn(List.of(buyTransaction));
         when(marketDataService.getCurrentPrice("BTC")).thenReturn(new BigDecimal("70834.00"));
 
         PortfolioSummaryResponse response = portfolioService.getCurrentUserPortfolioSummary();
@@ -128,7 +128,7 @@ class PortfolioServiceImplTest {
         buyTransaction.setCreatedAt(Instant.now());
 
         when(holdingRepository.findByUser(user)).thenReturn(List.of(holding(user, btc, "0.50000000", "45000.00")));
-        when(transactionRepository.findByUserOrderByCreatedAtAsc(user)).thenReturn(List.of(buyTransaction));
+        when(transactionRepository.findByUserAndVoidedAtIsNullOrderByLedgerSequenceAsc(user)).thenReturn(List.of(buyTransaction));
         when(marketDataService.getCurrentPrice("BTC")).thenReturn(new BigDecimal("70834.00"));
 
         PortfolioSummaryResponse response = portfolioService.getPortfolioSummaryForUser(user);
@@ -194,7 +194,7 @@ class PortfolioServiceImplTest {
 
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
         when(holdingRepository.findByUser(user)).thenReturn(List.of(holding(user, btc, "0.80000000", "50000.00")));
-        when(transactionRepository.findByUserOrderByCreatedAtAsc(user)).thenReturn(List.of(buyTransaction, sellTransaction));
+        when(transactionRepository.findByUserAndVoidedAtIsNullOrderByLedgerSequenceAsc(user)).thenReturn(List.of(buyTransaction, sellTransaction));
         when(marketDataService.getCurrentPrice("BTC")).thenReturn(new BigDecimal("65000.00"));
 
         PortfolioSummaryResponse response = portfolioService.getCurrentUserPortfolioSummary();
@@ -249,7 +249,7 @@ class PortfolioServiceImplTest {
 
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
         when(holdingRepository.findByUser(user)).thenReturn(List.of(holding(user, vet, "10.00000000", "2.50")));
-        when(transactionRepository.findByUserOrderByCreatedAtAsc(user)).thenReturn(List.of(buyTransaction));
+        when(transactionRepository.findByUserAndVoidedAtIsNullOrderByLedgerSequenceAsc(user)).thenReturn(List.of(buyTransaction));
         when(marketDataService.getCurrentPrice("VET")).thenReturn(BigDecimal.ZERO);
 
         PortfolioSummaryResponse response = portfolioService.getCurrentUserPortfolioSummary();

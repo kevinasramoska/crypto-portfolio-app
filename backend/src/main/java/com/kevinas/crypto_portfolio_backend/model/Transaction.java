@@ -54,13 +54,27 @@ public class Transaction {
     @NotNull
     private BigDecimal realisedProfitUsd;
 
+    @Column(name = "ledger_sequence", nullable = false, updatable = false)
+    @NotNull
+    @Positive
+    private Long ledgerSequence;
+
+    @Column(name = "voided_at")
+    private Instant voidedAt;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "replacement_transaction_id")
+    private Transaction replacementTransaction;
+
     @Column(nullable = false, updatable = false)
     @NotNull
     private Instant createdAt;
 
     @PrePersist
     public void prePersist() {
-        this.createdAt = Instant.now();
+        if (this.createdAt == null) {
+            this.createdAt = Instant.now();
+        }
         if (this.totalValueUsd == null) {
             this.totalValueUsd = BigDecimal.ZERO;
         }

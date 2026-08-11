@@ -3,6 +3,7 @@ import DashboardPage from "@/app/dashboard/page";
 
 const apiMocks = vi.hoisted(() => ({
   createTransaction: vi.fn(),
+  deleteTransaction: vi.fn(),
   getHoldings: vi.fn(),
   getPortfolioPerformanceHistory: vi.fn(),
   getPortfolioSummary: vi.fn(),
@@ -10,6 +11,7 @@ const apiMocks = vi.hoisted(() => ({
   getTransactions: vi.fn(),
   getTransactionSummary: vi.fn(),
   getTransactionsPaginated: vi.fn(),
+  updateTransaction: vi.fn(),
 }));
 
 vi.mock("@/lib/api", () => ({
@@ -67,6 +69,8 @@ describe("DashboardPage", () => {
     apiMocks.getPortfolioPerformanceHistory.mockResolvedValue({ range: "30d", history: [] });
     apiMocks.getTransactions.mockResolvedValue([]);
     apiMocks.createTransaction.mockResolvedValue({});
+    apiMocks.updateTransaction.mockResolvedValue({});
+    apiMocks.deleteTransaction.mockResolvedValue(undefined);
     window.localStorage.clear();
   });
 

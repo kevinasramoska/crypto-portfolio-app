@@ -20,11 +20,15 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
+import java.util.Set;
 
 import static org.mockito.Mockito.when;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -180,7 +184,7 @@ class TransactionControllerIntegrationTest extends IntegrationTestSupport {
         var user = userRepository.findByEmail(email).orElseThrow();
         assertThat(coinRepository.findBySymbolIgnoreCase("ROLLBACK")).isEmpty();
         assertThat(holdingRepository.findByUser(user)).isEmpty();
-        assertThat(transactionRepository.findByUserOrderByCreatedAtDesc(user)).isEmpty();
+        assertThat(transactionRepository.findAllRevisionsByUser(user)).isEmpty();
         assertThat(portfolioSnapshotRepository
                 .findByUserAndSnapshotAtGreaterThanEqualOrderBySnapshotAtAsc(user, Instant.EPOCH))
                 .isEmpty();
@@ -207,5 +211,251 @@ class TransactionControllerIntegrationTest extends IntegrationTestSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
+    void editingHistoricalBuy_shouldCreateReplacementReplayLedgerAndInvalidateSnapshots() throws Exception {
+        String email = "editor@example.com";
+        String token = getJwtToken(email, "password");
+        when(marketDataService.getCurrentPrice("EDIT")).thenReturn(new BigDecimal("400.00"));
+
+        TransactionResponse firstBuy = createTransaction(token, new TransactionRequest(
+                "EDIT", "Edit Coin", TransactionType.BUY, new BigDecimal("1.00000000"), new BigDecimal("100.00")
+        ));
+        createTransaction(token, new TransactionRequest(
+                "EDIT", "Edit Coin", TransactionType.BUY, new BigDecimal("1.00000000"), new BigDecimal("300.00")
+        ));
+        createTransaction(token, new TransactionRequest(
+                "EDIT", "Edit Coin", TransactionType.SELL, new BigDecimal("1.00000000"), new BigDecimal("400.00")
+        ));
+
+        var user = userRepository.findByEmail(email).orElseThrow();
+        Set<Long> oldSnapshotIds = portfolioSnapshotRepository
+                .findByUserAndSnapshotAtGreaterThanEqualOrderBySnapshotAtAsc(user, Instant.EPOCH)
+                .stream()
+                .map(snapshot -> snapshot.getId())
+                .collect(java.util.stream.Collectors.toSet());
+
+        TransactionRequest correction = new TransactionRequest(
+                "EDIT", "Edit Coin", TransactionType.BUY, new BigDecimal("1.00000000"), new BigDecimal("200.00")
+        );
+        String responseBody = mockMvc.perform(put("/api/transactions/{id}", firstBuy.id())
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(correction)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(org.hamcrest.Matchers.not(firstBuy.id().intValue())))
+                .andReturn().getResponse().getContentAsString();
+
+        TransactionResponse replacement = readTransactionResponse(responseBody);
+        assertThat(replacement.createdAt()).isEqualTo(firstBuy.createdAt());
+
+        List<com.kevinas.crypto_portfolio_backend.model.Transaction> allRevisions = transactionRepository
+                .findAllRevisionsByUser(user);
+        assertThat(allRevisions).hasSize(4);
+
+        var original = transactionRepository.findById(firstBuy.id()).orElseThrow();
+        assertThat(original.getVoidedAt()).isNotNull();
+        assertThat(original.getReplacementTransaction().getId()).isEqualTo(replacement.id());
+        assertThat(original.getLedgerSequence()).isEqualTo(1L);
+
+        List<com.kevinas.crypto_portfolio_backend.model.Transaction> activeTransactions = transactionRepository
+                .findByUserAndVoidedAtIsNullOrderByLedgerSequenceAsc(user);
+        assertThat(activeTransactions).hasSize(3);
+        assertThat(activeTransactions).extracting(com.kevinas.crypto_portfolio_backend.model.Transaction::getLedgerSequence)
+                .containsExactly(1L, 2L, 3L);
+        assertThat(activeTransactions.getLast().getRealisedProfitUsd()).isEqualByComparingTo("150.00");
+
+        var holding = holdingRepository.findByUserAndCoin_SymbolIgnoreCase(user, "EDIT").orElseThrow();
+        assertThat(holding.getQuantity()).isEqualByComparingTo("1.00000000");
+        assertThat(holding.getAverageBuyPriceUsd()).isEqualByComparingTo("250.00");
+
+        var snapshotsAfterEdit = portfolioSnapshotRepository
+                .findByUserAndSnapshotAtGreaterThanEqualOrderBySnapshotAtAsc(user, Instant.EPOCH);
+        assertThat(snapshotsAfterEdit).hasSize(1);
+        assertThat(oldSnapshotIds).doesNotContain(snapshotsAfterEdit.getFirst().getId());
+    }
+
+    @Test
+    void invalidHistoricalEdit_shouldRollbackAuditHoldingsAndSnapshots() throws Exception {
+        String email = "invalid-editor@example.com";
+        String token = getJwtToken(email, "password");
+        when(marketDataService.getCurrentPrice("INVALIDEDIT")).thenReturn(new BigDecimal("200.00"));
+
+        TransactionResponse buy = createTransaction(token, new TransactionRequest(
+                "INVALIDEDIT", "Invalid Edit Coin", TransactionType.BUY,
+                new BigDecimal("1.00000000"), new BigDecimal("100.00")
+        ));
+        createTransaction(token, new TransactionRequest(
+                "INVALIDEDIT", "Invalid Edit Coin", TransactionType.SELL,
+                new BigDecimal("1.00000000"), new BigDecimal("200.00")
+        ));
+
+        var user = userRepository.findByEmail(email).orElseThrow();
+        List<Long> snapshotIdsBefore = portfolioSnapshotRepository
+                .findByUserAndSnapshotAtGreaterThanEqualOrderBySnapshotAtAsc(user, Instant.EPOCH)
+                .stream()
+                .map(snapshot -> snapshot.getId())
+                .toList();
+
+        TransactionRequest invalidCorrection = new TransactionRequest(
+                "INVALIDEDIT", "Invalid Edit Coin", TransactionType.BUY,
+                new BigDecimal("0.50000000"), new BigDecimal("100.00")
+        );
+        mockMvc.perform(put("/api/transactions/{id}", buy.id())
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidCorrection)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value(
+                        "Transaction change would make a historical sell exceed available holdings"
+                ));
+
+        var unchangedBuy = transactionRepository.findById(buy.id()).orElseThrow();
+        assertThat(unchangedBuy.getVoidedAt()).isNull();
+        assertThat(unchangedBuy.getReplacementTransaction()).isNull();
+        assertThat(transactionRepository.findAllRevisionsByUser(user)).hasSize(2);
+        assertThat(holdingRepository.findByUser(user)).isEmpty();
+        assertThat(portfolioSnapshotRepository
+                .findByUserAndSnapshotAtGreaterThanEqualOrderBySnapshotAtAsc(user, Instant.EPOCH))
+                .extracting(snapshot -> snapshot.getId())
+                .containsExactlyElementsOf(snapshotIdsBefore);
+    }
+
+    @Test
+    void deletingHistoricalBuy_shouldReplayLaterSellAndRejectStaleRevision() throws Exception {
+        String email = "deleter@example.com";
+        String token = getJwtToken(email, "password");
+        when(marketDataService.getCurrentPrice("DELETE")).thenReturn(new BigDecimal("300.00"));
+
+        TransactionResponse firstBuy = createTransaction(token, new TransactionRequest(
+                "DELETE", "Delete Coin", TransactionType.BUY, new BigDecimal("1.00000000"), new BigDecimal("100.00")
+        ));
+        createTransaction(token, new TransactionRequest(
+                "DELETE", "Delete Coin", TransactionType.BUY, new BigDecimal("1.00000000"), new BigDecimal("200.00")
+        ));
+        createTransaction(token, new TransactionRequest(
+                "DELETE", "Delete Coin", TransactionType.SELL, new BigDecimal("1.00000000"), new BigDecimal("300.00")
+        ));
+
+        mockMvc.perform(delete("/api/transactions/{id}", firstBuy.id())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNoContent());
+
+        var user = userRepository.findByEmail(email).orElseThrow();
+        var activeTransactions = transactionRepository.findByUserAndVoidedAtIsNullOrderByLedgerSequenceAsc(user);
+        assertThat(activeTransactions).hasSize(2);
+        assertThat(activeTransactions.getLast().getRealisedProfitUsd()).isEqualByComparingTo("100.00");
+        assertThat(holdingRepository.findByUser(user)).isEmpty();
+
+        mockMvc.perform(delete("/api/transactions/{id}", firstBuy.id())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void repeatedEdits_shouldFormAReplacementChainAndRejectAnOldRevisionId() throws Exception {
+        String email = "replacement-chain@example.com";
+        String token = getJwtToken(email, "password");
+        when(marketDataService.getCurrentPrice("CHAIN")).thenReturn(new BigDecimal("100.00"));
+
+        TransactionResponse original = createTransaction(token, new TransactionRequest(
+                "CHAIN", "Chain Coin", TransactionType.BUY, new BigDecimal("1.00000000"), new BigDecimal("80.00")
+        ));
+        TransactionResponse secondRevision = updateTransaction(token, original.id(), new TransactionRequest(
+                "CHAIN", "Chain Coin", TransactionType.BUY, new BigDecimal("1.50000000"), new BigDecimal("90.00")
+        ));
+        TransactionResponse thirdRevision = updateTransaction(token, secondRevision.id(), new TransactionRequest(
+                "CHAIN", "Chain Coin", TransactionType.BUY, new BigDecimal("2.00000000"), new BigDecimal("100.00")
+        ));
+
+        mockMvc.perform(put("/api/transactions/{id}", original.id())
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new TransactionRequest(
+                                "CHAIN", "Chain Coin", TransactionType.BUY,
+                                new BigDecimal("3.00000000"), new BigDecimal("100.00")
+                        ))))
+                .andExpect(status().isConflict());
+
+        var user = userRepository.findByEmail(email).orElseThrow();
+        var revisions = transactionRepository.findAllRevisionsByUser(user);
+        assertThat(revisions).hasSize(3);
+        assertThat(revisions).extracting(com.kevinas.crypto_portfolio_backend.model.Transaction::getLedgerSequence)
+                .containsOnly(1L);
+        assertThat(transactionRepository.findById(original.id()).orElseThrow().getReplacementTransaction().getId())
+                .isEqualTo(secondRevision.id());
+        assertThat(transactionRepository.findById(secondRevision.id()).orElseThrow().getReplacementTransaction().getId())
+                .isEqualTo(thirdRevision.id());
+        assertThat(transactionRepository.findByUserAndVoidedAtIsNullOrderByLedgerSequenceAsc(user))
+                .extracting(com.kevinas.crypto_portfolio_backend.model.Transaction::getId)
+                .containsExactly(thirdRevision.id());
+        assertThat(thirdRevision.createdAt()).isEqualTo(original.createdAt());
+    }
+
+    @Test
+    void userCannotEditOrDeleteAnotherUsersTransaction() throws Exception {
+        String ownerToken = getJwtToken("mutation-owner@example.com", "password");
+        String otherToken = getJwtToken("mutation-other@example.com", "password");
+        when(marketDataService.getCurrentPrice("OWNED")).thenReturn(new BigDecimal("100.00"));
+
+        TransactionResponse owned = createTransaction(ownerToken, new TransactionRequest(
+                "OWNED", "Owned Coin", TransactionType.BUY, new BigDecimal("1.00000000"), new BigDecimal("100.00")
+        ));
+        TransactionRequest correction = new TransactionRequest(
+                "OWNED", "Owned Coin", TransactionType.BUY, new BigDecimal("2.00000000"), new BigDecimal("100.00")
+        );
+
+        mockMvc.perform(put("/api/transactions/{id}", owned.id())
+                        .header("Authorization", "Bearer " + otherToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(correction)))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(delete("/api/transactions/{id}", owned.id())
+                        .header("Authorization", "Bearer " + otherToken))
+                .andExpect(status().isNotFound());
+
+        var owner = userRepository.findByEmail("mutation-owner@example.com").orElseThrow();
+        assertThat(transactionRepository.findByUserAndVoidedAtIsNullOrderByLedgerSequenceAsc(owner)).hasSize(1);
+        assertThat(holdingRepository.findByUserAndCoin_SymbolIgnoreCase(owner, "OWNED").orElseThrow().getQuantity())
+                .isEqualByComparingTo("1.00000000");
+    }
+
+    private TransactionResponse createTransaction(String token, TransactionRequest request) throws Exception {
+        String response = mockMvc.perform(post("/api/transactions")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        return readTransactionResponse(response);
+    }
+
+    private TransactionResponse updateTransaction(String token, Long id, TransactionRequest request) throws Exception {
+        String response = mockMvc.perform(put("/api/transactions/{id}", id)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        return readTransactionResponse(response);
+    }
+
+    private TransactionResponse readTransactionResponse(String response) throws Exception {
+        var json = objectMapper.readTree(response);
+        return new TransactionResponse(
+                json.get("id").longValue(),
+                json.get("symbol").textValue(),
+                json.get("name").textValue(),
+                TransactionType.valueOf(json.get("type").textValue()),
+                json.get("quantity").decimalValue(),
+                json.get("priceUsd").decimalValue(),
+                json.get("totalValueUsd").decimalValue(),
+                json.get("realisedProfitUsd").decimalValue(),
+                Instant.parse(json.get("createdAt").textValue())
+        );
     }
 }

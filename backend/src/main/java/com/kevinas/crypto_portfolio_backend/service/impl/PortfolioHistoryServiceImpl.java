@@ -31,7 +31,7 @@ public class PortfolioHistoryServiceImpl implements PortfolioHistoryService {
     @Override
     @Transactional
     public void captureSnapshotForUser(Long userId) {
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         captureSnapshotIfEligible(user);
@@ -40,11 +40,15 @@ public class PortfolioHistoryServiceImpl implements PortfolioHistoryService {
     @Override
     @Transactional
     public void captureSnapshotsForAllUsers() {
-        userRepository.findAll().forEach(this::captureSnapshotIfEligible);
+        userRepository.findAll().forEach(user -> {
+            User lockedUser = userRepository.findByIdForUpdate(user.getId())
+                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
+            captureSnapshotIfEligible(lockedUser);
+        });
     }
 
     private void captureSnapshotIfEligible(User user) {
-        if (!transactionRepository.existsByUser(user)) {
+        if (!transactionRepository.existsByUserAndVoidedAtIsNull(user)) {
             log.debug("Skipping scheduled snapshot for user {} because no transactions exist", user.getId());
             return;
         }

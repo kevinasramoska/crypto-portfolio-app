@@ -152,3 +152,22 @@ export async function createTransaction(payload: TransactionPayload): Promise<Tr
 
   return parseOptionalJson(res, "Failed to create transaction");
 }
+
+export async function updateTransaction(id: number, payload: TransactionPayload): Promise<Transaction> {
+  const res = await authorizedFetch(`/transactions/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+
+  return parseOptionalJson(res, "Failed to update transaction");
+}
+
+export async function deleteTransaction(id: number): Promise<void> {
+  const res = await authorizedFetch(`/transactions/${id}`, {
+    method: "DELETE",
+  });
+
+  if (!res.ok) {
+    await parseOptionalJson(res, "Failed to delete transaction");
+  }
+}

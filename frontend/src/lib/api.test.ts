@@ -1,8 +1,10 @@
 import {
   AUTH_REQUIRED_MESSAGE,
   createTransaction,
+  deleteTransaction,
   getHoldings,
   getPortfolioSummary,
+  updateTransaction,
 } from "@/lib/api";
 
 const authHeaderMock = vi.fn();
@@ -128,5 +130,40 @@ describe("api client", () => {
         priceUsd: 65000,
       })
     ).rejects.toThrow("Failed to create transaction");
+  });
+
+  it("updates a transaction using PUT and returns the replacement", async () => {
+    authHeaderMock.mockReturnValue({ Authorization: "Bearer test-token" });
+    vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ id: 12, symbol: "BTC" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+
+    const payload = {
+      symbol: "BTC",
+      name: "Bitcoin",
+      type: "BUY" as const,
+      quantity: 1,
+      priceUsd: 55000,
+    };
+    await updateTransaction(11, payload);
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "http://localhost:8080/api/transactions/11",
+      expect.objectContaining({ method: "PUT", body: JSON.stringify(payload) })
+    );
+  });
+
+  it("deletes a transaction using DELETE without parsing the empty response", async () => {
+    authHeaderMock.mockReturnValue({ Authorization: "Bearer test-token" });
+    vi.spyOn(global, "fetch").mockResolvedValue(new Response(null, { status: 204 }));
+
+    await expect(deleteTransaction(11)).resolves.toBeUndefined();
+    expect(global.fetch).toHaveBeenCalledWith(
+      "http://localhost:8080/api/transactions/11",
+      expect.objectContaining({ method: "DELETE" })
+    );
   });
 });

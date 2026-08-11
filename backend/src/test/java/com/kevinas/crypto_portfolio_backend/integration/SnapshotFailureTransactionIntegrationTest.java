@@ -81,7 +81,7 @@ class SnapshotFailureTransactionIntegrationTest extends IntegrationTestSupport {
                 .andExpect(status().isOk());
 
         var user = userRepository.findByEmail(email).orElseThrow();
-        assertThat(transactionRepository.findByUserOrderByCreatedAtDesc(user)).hasSize(1);
+        assertThat(transactionRepository.findAllRevisionsByUser(user)).hasSize(1);
         assertThat(holdingRepository.findByUser(user)).hasSize(1);
         assertThat(portfolioSnapshotRepository
                 .findByUserAndSnapshotAtGreaterThanEqualOrderBySnapshotAtAsc(user, Instant.EPOCH))
