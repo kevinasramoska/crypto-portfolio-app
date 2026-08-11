@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import TransactionsTable from "@/components/TransactionsTable";
 import { Transaction } from "@/lib/types";
@@ -24,16 +24,17 @@ describe("TransactionsTable", () => {
 
     await user.click(screen.getByRole("button", { name: "Edit" }));
     const priceInput = screen.getByRole("spinbutton", { name: "Price USD" });
-    await user.clear(priceInput);
-    await user.type(priceInput, "55000");
+    fireEvent.change(priceInput, { target: { value: "55000" } });
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
-    expect(onEdit).toHaveBeenCalledWith(11, {
-      symbol: "BTC",
-      name: "Bitcoin",
-      type: "BUY",
-      quantity: 1,
-      priceUsd: 55000,
+    await waitFor(() => {
+      expect(onEdit).toHaveBeenCalledWith(11, {
+        symbol: "BTC",
+        name: "Bitcoin",
+        type: "BUY",
+        quantity: 1,
+        priceUsd: 55000,
+      });
     });
     expect(screen.queryByRole("form", { name: "Edit BTC transaction" })).not.toBeInTheDocument();
   });

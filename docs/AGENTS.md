@@ -16,7 +16,7 @@ The app lets users:
 ## Tech Stack
 
 Backend:
-- Java 26
+- Java 25 LTS
 - Spring Boot 4.1.0
 - Spring MVC REST controllers
 - Spring Security
@@ -33,8 +33,8 @@ Backend:
 - H2 for tests
 
 Frontend:
-- Next.js 16.2.9
-- React 19.2.7
+- Next.js 16.3.0
+- React 19.2.8
 - TypeScript
 - Tailwind CSS
 
