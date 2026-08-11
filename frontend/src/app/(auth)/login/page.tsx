@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { login } from "@/lib/api";
 import { saveToken, setActiveProfile } from "@/lib/auth";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +32,7 @@ export default function LoginPage() {
       const res = await login(trimmedEmail, password);
       saveToken(res.accessToken);
       setActiveProfile(trimmedEmail);
-      window.location.href = "/dashboard";
+      router.push("/dashboard");
     } catch {
       setError("Invalid credentials. Please check your email and password.");
     } finally {

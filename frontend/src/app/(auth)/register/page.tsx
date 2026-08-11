@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { register } from "@/lib/api";
 import { saveToken, setActiveProfile } from "@/lib/auth";
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -50,7 +52,7 @@ export default function RegisterPage() {
       const res = await register(trimmedEmail, password);
       saveToken(res.accessToken);
       setActiveProfile(trimmedEmail, trimmedFirstName);
-      window.location.href = "/dashboard";
+      router.push("/dashboard");
     } catch {
       setError("Registration failed. Try a different email or try again later.");
     } finally {

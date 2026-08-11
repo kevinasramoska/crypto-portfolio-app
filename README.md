@@ -8,13 +8,13 @@ The app is transaction-driven. Users write transactions, the backend updates sto
 
 | Layer | Technology |
 |---|---|
-| Backend | Java 26, Spring Boot 4.1.0 |
+| Backend | Java 25 LTS, Spring Boot 4.1.0 |
 | API | Spring MVC REST controllers |
 | Security | Spring Security, JWT, BCrypt |
 | Database | PostgreSQL, Spring Data JPA, Hibernate, Flyway |
 | Market data | CoinGecko-compatible API via `RestTemplate` |
 | Backend tests | JUnit 5, Spring Boot Test, MockMvc, H2, PostgreSQL Testcontainers |
-| Frontend | Next.js 16.2.9, React 19.2.7, TypeScript |
+| Frontend | Next.js 16.3.0, React 19.2.8, TypeScript |
 | Styling | Tailwind CSS |
 | Frontend tests | Vitest, Testing Library, Playwright config |
 | Local services | Docker Compose, PostgreSQL, pgAdmin |
@@ -67,9 +67,9 @@ The app is transaction-driven. Users write transactions, the backend updates sto
 
 ### 1. Install Prerequisites
 
-- Java 26
+- Java 25 LTS
 - Docker Desktop or compatible Docker runtime
-- Node.js 20.19+ recommended for the current frontend tooling
+- Node.js 24 LTS recommended for the current frontend tooling
 
 ### 2. Configure Environment
 

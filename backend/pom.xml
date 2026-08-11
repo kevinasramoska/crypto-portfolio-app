@@ -20,7 +20,7 @@
     <description>Crypto Portfolio Tracker Backend</description>
 
     <properties>
-        <java.version>26</java.version>
+        <java.version>25</java.version>
         <lombok.version>1.18.38</lombok.version>
         <jjwt.version>0.12.5</jjwt.version>
         <testcontainers.version>2.0.5</testcontainers.version>
