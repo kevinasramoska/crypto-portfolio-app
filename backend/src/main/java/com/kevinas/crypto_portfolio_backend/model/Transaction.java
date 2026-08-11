@@ -6,6 +6,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 @Entity
 @Table(name = "transactions")
@@ -73,7 +74,7 @@ public class Transaction {
     @PrePersist
     public void prePersist() {
         if (this.createdAt == null) {
-            this.createdAt = Instant.now();
+            this.createdAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
         }
         if (this.totalValueUsd == null) {
             this.totalValueUsd = BigDecimal.ZERO;
