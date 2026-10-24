@@ -14,7 +14,7 @@ The app is transaction-driven. Users write transactions, the backend updates sto
 | Database | PostgreSQL, Spring Data JPA, Hibernate, Flyway |
 | Market data | CoinGecko-compatible API via `RestTemplate` |
 | Backend tests | JUnit 5, Spring Boot Test, MockMvc, H2, PostgreSQL Testcontainers |
-| Frontend | Next.js 16.3.0, React 19.2.8, TypeScript |
+| Frontend | Next.js 16.4.3, React 19.2.8, TypeScript |
 | Styling | Tailwind CSS |
 | Frontend tests | Vitest, Testing Library, Playwright config |
 | Local services | Docker Compose, PostgreSQL, pgAdmin |

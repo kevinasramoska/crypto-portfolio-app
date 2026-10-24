@@ -168,25 +168,31 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!watchlistHydrated) return;
-    loadPrices();
+    const initialLoad = window.setTimeout(loadPrices, 0);
     const interval = setInterval(loadPrices, 10000);
-    return () => clearInterval(interval);
+    return () => {
+      window.clearTimeout(initialLoad);
+      clearInterval(interval);
+    };
   }, [loadPrices, watchlistHydrated]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem(WATCHLIST_STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.every(item => typeof item === "string")) {
-          setWatchlist(parsed.length ? parsed : DEFAULT_WATCHLIST);
+    const hydration = window.setTimeout(() => {
+      const stored = window.localStorage.getItem(WATCHLIST_STORAGE_KEY);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.every(item => typeof item === "string")) {
+            setWatchlist(parsed.length ? parsed : DEFAULT_WATCHLIST);
+          }
+        } catch {
+          // ignore malformed storage
         }
-      } catch {
-        // ignore malformed storage
       }
-    }
-    setWatchlistHydrated(true);
+      setWatchlistHydrated(true);
+    }, 0);
+    return () => window.clearTimeout(hydration);
   }, []);
 
   useEffect(() => {

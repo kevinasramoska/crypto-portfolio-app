@@ -33,7 +33,7 @@ Backend:
 - H2 for tests
 
 Frontend:
-- Next.js 16.3.0
+- Next.js 16.4.3
 - React 19.2.8
 - TypeScript
 - Tailwind CSS

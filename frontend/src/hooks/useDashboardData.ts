@@ -273,12 +273,18 @@ export function useDashboardData() {
   }, []);
 
   useEffect(() => {
-    loadPortfolioData();
-    loadTransactionData();
+    const initialLoad = window.setTimeout(() => {
+      void loadPortfolioData();
+      void loadTransactionData();
+    }, 0);
+    return () => window.clearTimeout(initialLoad);
   }, [loadPortfolioData, loadTransactionData]);
 
   useEffect(() => {
-    loadPerformanceData();
+    const initialLoad = window.setTimeout(() => {
+      void loadPerformanceData();
+    }, 0);
+    return () => window.clearTimeout(initialLoad);
   }, [loadPerformanceData]);
 
   return {
