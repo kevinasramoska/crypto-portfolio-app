@@ -53,8 +53,8 @@ async function authorizedFetch(path: string, init?: RequestInit) {
     headers,
   });
 
-  if (res.status === 401 || res.status === 403) {
-    clearAuthSession();
+  if (res.status === 401) {
+    if (authorization === authHeader().Authorization) clearAuthSession();
     throw new Error(AUTH_REQUIRED_MESSAGE);
   }
 
@@ -74,6 +74,13 @@ export async function getPrices(symbols: string[]): Promise<PriceMap> {
 export async function getSupportedCoins(): Promise<SupportedCoin[]> {
   const res = await fetch(`${API_BASE}/market/supported-coins`);
   return parseJson(res, "Failed to fetch supported coins");
+}
+
+export async function getMarketQuotes(symbols: string[]): Promise<Record<string, {
+  price: number | null; fetchedAt: string | null; status: "FRESH" | "STALE" | "UNAVAILABLE";
+}>> {
+  const res = await fetch(`${API_BASE}/market/quotes?symbols=${encodeURIComponent(symbols.join(","))}`);
+  return parseJson(res, "Failed to fetch quote freshness");
 }
 
 export async function login(email: string, password: string): Promise<LoginResponse> {

@@ -61,6 +61,12 @@ test("registers, logs in, creates a transaction, and shows dashboard data", asyn
   );
   await expect(page.getByTestId("portfolio-card-assets")).toContainText("1");
 
+  for (const width of [360, 390, 768, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(page.getByTestId("holding-row-BTC")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  }
+
   await page.getByRole("button", { name: "Edit" }).click();
   const editForm = page.getByRole("form", { name: "Edit BTC transaction" });
   await editForm.getByLabel("Price USD").fill("55000");

@@ -177,6 +177,6 @@ class PortfolioPerformanceHistoryIntegrationTest extends IntegrationTestSupport 
     void performanceHistory_shouldRejectUnauthenticatedAccess() throws Exception {
         mockMvc.perform(get("/api/portfolio/performance/history")
                         .param("range", "7d"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 }

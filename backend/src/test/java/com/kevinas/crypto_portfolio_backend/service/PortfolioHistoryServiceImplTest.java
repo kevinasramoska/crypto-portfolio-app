@@ -42,7 +42,7 @@ class PortfolioHistoryServiceImplTest {
     private TransactionRepository transactionRepository;
 
     @InjectMocks
-    private PortfolioHistoryServiceImpl portfolioHistoryService;
+    private com.kevinas.crypto_portfolio_backend.service.impl.PortfolioSnapshotWriter portfolioHistoryService;
 
     @Test
     void captureSnapshotForUser_shouldSaveSnapshot_whenUserHasTransactionsAndNoSnapshotToday() {
@@ -62,7 +62,7 @@ class PortfolioHistoryServiceImplTest {
         )).thenReturn(false);
         when(portfolioService.getPortfolioSummaryForUser(user)).thenReturn(summary);
 
-        portfolioHistoryService.captureSnapshotForUser(1L);
+        portfolioHistoryService.write(1L, true, portfolioService::getPortfolioSummaryForUser);
 
         ArgumentCaptor<com.kevinas.crypto_portfolio_backend.model.PortfolioSnapshot> captor =
                 ArgumentCaptor.forClass(com.kevinas.crypto_portfolio_backend.model.PortfolioSnapshot.class);
@@ -85,7 +85,6 @@ class PortfolioHistoryServiceImplTest {
                 .totalProfitLossUsd(new BigDecimal("10.00"))
                 .build();
 
-        when(userRepository.findAll()).thenReturn(List.of(withTransactions, withoutTransactions));
         when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(withTransactions));
         when(userRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(withoutTransactions));
         when(transactionRepository.existsByUserAndVoidedAtIsNull(withTransactions)).thenReturn(true);
@@ -97,7 +96,8 @@ class PortfolioHistoryServiceImplTest {
         )).thenReturn(false);
         when(portfolioService.getPortfolioSummaryForUser(withTransactions)).thenReturn(summary);
 
-        portfolioHistoryService.captureSnapshotsForAllUsers();
+        portfolioHistoryService.write(1L, true, portfolioService::getPortfolioSummaryForUser);
+        portfolioHistoryService.write(2L, true, portfolioService::getPortfolioSummaryForUser);
 
         verify(portfolioService).getPortfolioSummaryForUser(withTransactions);
         verify(portfolioService, never()).getPortfolioSummaryForUser(withoutTransactions);
@@ -108,7 +108,7 @@ class PortfolioHistoryServiceImplTest {
     void captureSnapshotForUser_shouldSkipWhenSnapshotAlreadyExistsToday() {
         User user = buildUser(1L, "snapshot@example.com");
         Instant startOfDay = Instant.now()
-                .atZone(ZoneId.systemDefault())
+                .atZone(java.time.ZoneOffset.UTC)
                 .truncatedTo(ChronoUnit.DAYS)
                 .toInstant();
         Instant endOfDay = startOfDay.plus(1, ChronoUnit.DAYS);
@@ -117,7 +117,7 @@ class PortfolioHistoryServiceImplTest {
         when(transactionRepository.existsByUserAndVoidedAtIsNull(user)).thenReturn(true);
         when(portfolioSnapshotRepository.existsByUserAndSnapshotAtBetween(user, startOfDay, endOfDay)).thenReturn(true);
 
-        portfolioHistoryService.captureSnapshotForUser(1L);
+        portfolioHistoryService.write(1L, true, portfolioService::getPortfolioSummaryForUser);
 
         verify(portfolioService, never()).getPortfolioSummaryForUser(user);
         verify(portfolioSnapshotRepository, never()).save(org.mockito.ArgumentMatchers.any());

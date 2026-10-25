@@ -35,6 +35,9 @@ public class PortfolioSnapshot {
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal totalProfitLossUsd;
 
+    @Column(nullable = false)
+    private boolean valuationComplete;
+
     @PrePersist
     public void prePersist() {
         if (this.snapshotAt == null) {

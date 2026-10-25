@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AddTransactionForm from "@/components/AddTransactionForm";
 import AssetAllocationSummary from "@/components/AssetAllocationSummary";
 import CryptoCard from "@/components/CryptoCard";
@@ -12,7 +12,7 @@ import TransactionSummaryCards from "@/components/TransactionSummaryCards";
 import TransactionsTable from "@/components/TransactionsTable";
 import WatchlistControls from "@/components/WatchlistControls";
 import Link from "next/link";
-import { getPrices } from "@/lib/api";
+import { getMarketQuotes } from "@/lib/api";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { PriceMap } from "@/lib/types";
 
@@ -51,6 +51,8 @@ function formatTimestamp(date: Date | null): { absolute: string; relative: strin
 }
 
 export default function DashboardPage() {
+  const priceGeneration = useRef(0);
+  const invalidatePrices = useCallback(() => { priceGeneration.current++; }, []);
   const [prices, setPrices] = useState<PriceMap>({});
   const [priceLoading, setPriceLoading] = useState(true);
   const [priceError, setPriceError] = useState<string | null>(null);
@@ -128,6 +130,7 @@ export default function DashboardPage() {
   const isNewPortfolio = !portfolioDataLoading && holdings.length === 0;
 
   const loadPrices = useCallback(async () => {
+    const generation = ++priceGeneration.current;
     if (!watchlist.length) {
       setPrices({});
       setPriceLoading(false);
@@ -137,16 +140,27 @@ export default function DashboardPage() {
     }
 
     try {
-      setPriceLoading(true);
       setPriceError(null);
-      const data = await getPrices(watchlist);
+      const quotes = await getMarketQuotes(watchlist);
+      if (generation !== priceGeneration.current) return;
+      const data: PriceMap = {};
+      for (const [symbol, quote] of Object.entries(quotes)) {
+        if (quote.price !== null && quote.status !== "UNAVAILABLE") data[symbol] = quote.price;
+      }
       setPrices(data);
-      setLastPriceUpdated(new Date());
+      const usable = Object.values(quotes).filter(quote => quote.fetchedAt && quote.status !== "UNAVAILABLE");
+      setLastPriceUpdated(usable.length ? new Date(Math.min(...usable.map(quote => Date.parse(quote.fetchedAt!)))) : null);
+      if (Object.values(quotes).some(quote => quote.status === "STALE")) {
+        setPriceError("Showing cached prices (up to 5 minutes old). Refreshing when the provider recovers.");
+      }
     } catch (error) {
+      if (generation !== priceGeneration.current) return;
+      setPrices({});
+      setLastPriceUpdated(null);
       console.error("Error loading prices", error);
       setPriceError("Unable to fetch latest prices. Please try again.");
     } finally {
-      setPriceLoading(false);
+      if (generation === priceGeneration.current) setPriceLoading(false);
     }
   }, [watchlist]);
 
@@ -156,6 +170,8 @@ export default function DashboardPage() {
       if (!normalized) return "Enter a symbol to add.";
       if (!/^[A-Z0-9]{2,10}$/.test(normalized)) return "Only letters/numbers, 2-10 chars.";
       if (watchlist.includes(normalized)) return `${normalized} is already in your watchlist.`;
+      if (watchlist.length >= 100) return "Watchlist is limited to 100 symbols.";
+      priceGeneration.current++;
       setWatchlist(prev => [...prev, normalized]);
       return null;
     },
@@ -163,6 +179,7 @@ export default function DashboardPage() {
   );
 
   const handleRemoveWatchlist = useCallback((symbol: string) => {
+    priceGeneration.current++;
     setWatchlist(prev => prev.filter(item => item !== symbol));
   }, []);
 
@@ -171,10 +188,11 @@ export default function DashboardPage() {
     const initialLoad = window.setTimeout(loadPrices, 0);
     const interval = setInterval(loadPrices, 10000);
     return () => {
+      invalidatePrices();
       window.clearTimeout(initialLoad);
       clearInterval(interval);
     };
-  }, [loadPrices, watchlistHydrated]);
+  }, [loadPrices, watchlistHydrated, invalidatePrices]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -331,8 +349,8 @@ export default function DashboardPage() {
             <AssetAllocationSummary holdings={holdings} loading={portfolioDataLoading} error={portfolioDataError} />
           </section>
 
-          <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
-            <div className="space-y-6">
+          <section className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
+            <div className="min-w-0 space-y-6">
               <div>
                 <h2 className="text-2xl font-semibold">Holdings</h2>
                 <p className="text-sm text-gray-500">Open positions calculated by the backend portfolio service.</p>

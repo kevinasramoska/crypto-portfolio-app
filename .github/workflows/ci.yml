@@ -3,6 +3,11 @@ name: CI
 on:
   push:
   pull_request:
+  schedule:
+    - cron: '23 7 * * 1'
+
+permissions:
+  contents: read
 
 jobs:
   backend:
@@ -19,12 +24,32 @@ jobs:
           java-version: "25"
           cache: maven
       - run: ./mvnw test
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: ./mvnw -B dependency:tree -Dscope=runtime -DoutputType=json -DoutputFile=target/dependencies.json
+      - run: node ../scripts/audit-maven.mjs target/dependencies.json
       - uses: actions/upload-artifact@v4
         with:
           name: backend-coverage
           path: backend/target/site/jacoco
           if-no-files-found: error
           retention-days: 14
+
+  container-security:
+    name: Container security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t crypto-portfolio:scan backend
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.76.1
+          timeout: 10m0s
+          image-ref: crypto-portfolio:scan
+          format: table
+          exit-code: '1'
+          severity: MEDIUM,HIGH,CRITICAL
 
   frontend:
     name: Frontend checks
@@ -40,6 +65,7 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+      - run: npm audit --audit-level=moderate
       - run: npm run coverage
       - run: npm run lint
       - run: npm run build

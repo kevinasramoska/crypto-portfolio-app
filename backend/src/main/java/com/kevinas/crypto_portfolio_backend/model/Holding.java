@@ -35,8 +35,14 @@ public class Holding {
     @Column(nullable = false, precision = 19, scale = 8)
     private BigDecimal quantity;
 
-    @Column(nullable = false, precision = 19, scale = 2)
+    @Column(nullable = false, precision = 28, scale = 12)
     private BigDecimal averageBuyPriceUsd;
+
+    @Column(precision = 38, scale = 20)
+    private BigDecimal costBasisUsd;
+
+    @Column(length = 255)
+    private String assetName;
 
     private Instant createdAt;
     private Instant updatedAt;

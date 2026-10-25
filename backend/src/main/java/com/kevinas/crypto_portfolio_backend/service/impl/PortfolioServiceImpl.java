@@ -6,9 +6,6 @@ import com.kevinas.crypto_portfolio_backend.dto.PortfolioPerformanceHistoryRespo
 import com.kevinas.crypto_portfolio_backend.dto.PortfolioPerformancePointResponse;
 import com.kevinas.crypto_portfolio_backend.dto.PortfolioSummaryResponse;
 import com.kevinas.crypto_portfolio_backend.model.Holding;
-import com.kevinas.crypto_portfolio_backend.model.PortfolioSnapshot;
-import com.kevinas.crypto_portfolio_backend.model.Transaction;
-import com.kevinas.crypto_portfolio_backend.model.TransactionType;
 import com.kevinas.crypto_portfolio_backend.model.User;
 import com.kevinas.crypto_portfolio_backend.repository.HoldingRepository;
 import com.kevinas.crypto_portfolio_backend.repository.PortfolioSnapshotRepository;
@@ -19,8 +16,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -42,30 +37,33 @@ public class PortfolioServiceImpl implements com.kevinas.crypto_portfolio_backen
     private final UserRepository userRepository;
     private final MarketDataService marketDataService;
     private final PortfolioSnapshotRepository portfolioSnapshotRepository;
+    private final PortfolioSnapshotWriter snapshotWriter;
 
     @Override
     public List<HoldingResponse> getUserHoldings() {
         User user = getAuthenticatedUser();
 
-        return holdingRepository.findByUser(user).stream()
+        List<Holding> holdings = holdingRepository.findByUser(user);
+        marketDataService.getCurrentPrices(holdings.stream().map(h -> h.getCoin().getSymbol()).toList());
+        return holdings.stream()
                 .map(holding -> {
                     PriceLookup currentPrice = lookupPrice(holding.getCoin().getSymbol());
-                    BigDecimal investedValueUsd = money(
-                            holding.getQuantity().multiply(holding.getAverageBuyPriceUsd())
-                    );
+                    BigDecimal exactCost = costBasis(holding);
+                    BigDecimal exactValue = holding.getQuantity().multiply(currentPrice.price());
+                    BigDecimal investedValueUsd = money(exactCost);
                     BigDecimal currentValueUsd = currentPrice.available()
                             ? money(holding.getQuantity().multiply(currentPrice.price()))
                             : BigDecimal.ZERO.setScale(USD_SCALE, RoundingMode.HALF_UP);
                     BigDecimal profitLossUsd = currentPrice.available()
-                            ? money(currentValueUsd.subtract(investedValueUsd))
+                            ? money(exactValue.subtract(exactCost))
                             : BigDecimal.ZERO.setScale(USD_SCALE, RoundingMode.HALF_UP);
 
                     return new HoldingResponse(
                             holding.getId(),
                             holding.getCoin().getSymbol(),
-                            holding.getCoin().getName(),
+                            assetName(holding),
                             scaleQty(holding.getQuantity()),
-                            money(holding.getAverageBuyPriceUsd()),
+                            holding.getAverageBuyPriceUsd(),
                             currentPrice.price(),
                             investedValueUsd,
                             currentValueUsd,
@@ -89,12 +87,31 @@ public class PortfolioServiceImpl implements com.kevinas.crypto_portfolio_backen
 
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @org.springframework.transaction.annotation.Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
     public void createSnapshotForUser(Long userId) {
-        User user = userRepository.findByIdForUpdate(userId)
+        captureSnapshot(userId, false);
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
+    public void createDailySnapshotForUser(Long userId) {
+        captureSnapshot(userId, true);
+    }
+
+    private void captureSnapshot(Long userId, boolean daily) {
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        PortfolioSummaryResponse summary = computePortfolioSummary(user);
-        saveSnapshot(user, summary);
+        // Detached post-commit work must fetch quotes before entering the writer transaction.
+        List<String> symbols = holdingRepository.findByUser(user).stream().map(h -> h.getCoin().getSymbol()).toList();
+        marketDataService.getCurrentPrices(symbols);
+        java.util.Map<String, PriceLookup> quotes = new java.util.HashMap<>();
+        java.util.Map<String, Boolean> stale = new java.util.HashMap<>();
+        for (String symbol : symbols) {
+            quotes.put(symbol, lookupPrice(symbol));
+            var metadata = marketDataService.getPriceMetadata(symbol);
+            stale.put(symbol, metadata != null && !"FRESH".equals(metadata.status()));
+        }
+        snapshotWriter.write(userId, daily, locked -> computePortfolioSummary(locked, quotes, stale));
     }
 
     @Override
@@ -110,7 +127,8 @@ public class PortfolioServiceImpl implements com.kevinas.crypto_portfolio_backen
                         snapshot.getSnapshotAt(),
                         money(snapshot.getTotalInvestedUsd()),
                         money(snapshot.getTotalCurrentValueUsd()),
-                        money(snapshot.getTotalProfitLossUsd())
+                        money(snapshot.getTotalProfitLossUsd()),
+                        snapshot.isValuationComplete()
                 ))
                 .toList();
 
@@ -118,37 +136,51 @@ public class PortfolioServiceImpl implements com.kevinas.crypto_portfolio_backen
     }
 
     private PortfolioSummaryResponse computePortfolioSummary(User user) {
+        return computePortfolioSummary(user, null, null);
+    }
+
+    private PortfolioSummaryResponse computePortfolioSummary(User user, java.util.Map<String, PriceLookup> quotes,
+            java.util.Map<String, Boolean> stale) {
         List<Holding> holdings = holdingRepository.findByUser(user);
-        List<Transaction> transactions = transactionRepository.findByUserAndVoidedAtIsNullOrderByLedgerSequenceAsc(user);
+        if (quotes == null) marketDataService.getCurrentPrices(holdings.stream().map(h -> h.getCoin().getSymbol()).toList());
 
         List<PortfolioHoldingSummaryResponse> holdingSummaries = new ArrayList<>();
         BigDecimal totalInvestedUsd = BigDecimal.ZERO;
         BigDecimal totalCurrentValueUsd = BigDecimal.ZERO;
         BigDecimal totalUnrealisedProfitLossUsd = BigDecimal.ZERO;
         boolean hasUnsupportedMarketData = false;
+        boolean hasStaleMarketData = false;
 
         for (Holding holding : holdings) {
             if (holding.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
                 continue;
             }
 
-            PriceLookup currentPrice = lookupPrice(holding.getCoin().getSymbol());
-            BigDecimal investedValueUsd = money(
-                    holding.getQuantity().multiply(holding.getAverageBuyPriceUsd())
-            );
+            String symbol = holding.getCoin().getSymbol();
+            PriceLookup currentPrice = quotes == null ? lookupPrice(symbol) : quotes.getOrDefault(symbol, PriceLookup.unavailable());
+            BigDecimal exactCost = costBasis(holding);
+            BigDecimal exactValue = currentPrice.available() ? holding.getQuantity().multiply(currentPrice.price()) : BigDecimal.ZERO;
+            BigDecimal exactUnrealised = currentPrice.available() ? exactValue.subtract(exactCost) : BigDecimal.ZERO;
+            BigDecimal investedValueUsd = money(exactCost);
             BigDecimal currentValueUsd = currentPrice.available()
                     ? money(holding.getQuantity().multiply(currentPrice.price()))
                     : BigDecimal.ZERO.setScale(USD_SCALE, RoundingMode.HALF_UP);
             BigDecimal unrealisedProfitLossUsd = currentPrice.available()
-                    ? money(currentValueUsd.subtract(investedValueUsd))
+                    ? money(exactUnrealised)
                     : BigDecimal.ZERO.setScale(USD_SCALE, RoundingMode.HALF_UP);
             hasUnsupportedMarketData = hasUnsupportedMarketData || !currentPrice.available();
+            if (stale == null) {
+                var metadata = marketDataService.getPriceMetadata(symbol);
+                hasStaleMarketData |= metadata != null && !"FRESH".equals(metadata.status());
+            } else {
+                hasStaleMarketData |= stale.getOrDefault(symbol, true);
+            }
 
             PortfolioHoldingSummaryResponse summary = PortfolioHoldingSummaryResponse.builder()
                     .symbol(holding.getCoin().getSymbol())
-                    .name(holding.getCoin().getName())
+                    .name(assetName(holding))
                     .quantity(scaleQty(holding.getQuantity()))
-                    .averageBuyPriceUsd(money(holding.getAverageBuyPriceUsd()))
+                    .averageBuyPriceUsd(holding.getAverageBuyPriceUsd())
                     .currentPriceUsd(currentPrice.price())
                     .investedValueUsd(investedValueUsd)
                     .currentValueUsd(currentValueUsd)
@@ -158,26 +190,20 @@ public class PortfolioServiceImpl implements com.kevinas.crypto_portfolio_backen
 
             holdingSummaries.add(summary);
 
-            totalInvestedUsd = totalInvestedUsd.add(investedValueUsd);
+            totalInvestedUsd = totalInvestedUsd.add(exactCost);
             if (currentPrice.available()) {
-                totalCurrentValueUsd = totalCurrentValueUsd.add(currentValueUsd);
-                totalUnrealisedProfitLossUsd = totalUnrealisedProfitLossUsd.add(unrealisedProfitLossUsd);
+                totalCurrentValueUsd = totalCurrentValueUsd.add(exactValue);
+                totalUnrealisedProfitLossUsd = totalUnrealisedProfitLossUsd.add(exactUnrealised);
             }
         }
 
-        BigDecimal totalRealisedProfitLossUsd = transactions.stream()
-                .filter(tx -> tx.getType() == TransactionType.SELL)
-                .map(Transaction::getRealisedProfitUsd)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalRealisedProfitLossUsd = transactionRepository.aggregateActiveTotals(user).totalRealisedProfitUsd();
 
+        BigDecimal totalProfitLossUsd = money(totalRealisedProfitLossUsd.add(totalUnrealisedProfitLossUsd));
         totalInvestedUsd = money(totalInvestedUsd);
         totalCurrentValueUsd = money(totalCurrentValueUsd);
         totalUnrealisedProfitLossUsd = money(totalUnrealisedProfitLossUsd);
         totalRealisedProfitLossUsd = money(totalRealisedProfitLossUsd);
-
-        BigDecimal totalProfitLossUsd = money(
-                totalRealisedProfitLossUsd.add(totalUnrealisedProfitLossUsd)
-        );
 
         return PortfolioSummaryResponse.builder()
                 .totalInvestedUsd(totalInvestedUsd)
@@ -187,18 +213,8 @@ public class PortfolioServiceImpl implements com.kevinas.crypto_portfolio_backen
                 .totalProfitLossUsd(totalProfitLossUsd)
                 .holdings(holdingSummaries)
                 .hasUnsupportedMarketData(hasUnsupportedMarketData)
+                .hasStaleMarketData(hasStaleMarketData)
                 .build();
-    }
-
-    private void saveSnapshot(User user, PortfolioSummaryResponse summary) {
-        PortfolioSnapshot snapshot = PortfolioSnapshot.builder()
-                .user(user)
-                .totalInvestedUsd(money(summary.getTotalInvestedUsd()))
-                .totalCurrentValueUsd(money(summary.getTotalCurrentValueUsd()))
-                .totalProfitLossUsd(money(summary.getTotalProfitLossUsd()))
-                .build();
-
-        portfolioSnapshotRepository.save(snapshot);
     }
 
     private int parseRangeDays(String range) {
@@ -227,10 +243,19 @@ public class PortfolioServiceImpl implements com.kevinas.crypto_portfolio_backen
             if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
                 return PriceLookup.unavailable();
             }
-            return new PriceLookup(money(price), true);
+            return new PriceLookup(price, true);
         } catch (RuntimeException ex) {
             return PriceLookup.unavailable();
         }
+    }
+
+    private String assetName(Holding holding) {
+        return holding.getAssetName() == null ? holding.getCoin().getName() : holding.getAssetName();
+    }
+
+    private BigDecimal costBasis(Holding holding) {
+        return holding.getCostBasisUsd() == null
+                ? holding.getQuantity().multiply(holding.getAverageBuyPriceUsd()) : holding.getCostBasisUsd();
     }
 
     private BigDecimal money(BigDecimal value) {

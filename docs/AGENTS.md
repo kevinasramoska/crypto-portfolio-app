@@ -17,7 +17,7 @@ The app lets users:
 
 Backend:
 - Java 25 LTS
-- Spring Boot 4.1.0
+- Spring Boot 4.1.2
 - Spring MVC REST controllers
 - Spring Security
 - JWT (jjwt 0.12.5)
@@ -25,7 +25,7 @@ Backend:
 - PostgreSQL
 - Spring Data JPA / Hibernate
 - Flyway
-- JUnit 5
+- JUnit Jupiter 6
 - Spring Boot Test
 - MockMvc (spring-boot-webmvc-test)
 - Mockito
@@ -60,7 +60,7 @@ Important backend folders:
 - `security` = JWT and Spring Security
 - `exception` = global error handling
 - `config` = Spring configuration (server, security, database, API clients)
-- `scheduler` = scheduled tasks (currently disabled)
+- `scheduler` = enabled scheduled portfolio snapshot capture
 - `util` = utilities like CoinGeckoSymbolMapper for symbol-to-ID mappings
 - `db/migration` = Flyway migrations
 
@@ -86,7 +86,7 @@ Important frontend folders:
 The app is transaction-driven.
 
 - Users record `BUY` and `SELL` transactions.
-- Holdings are derived/updated from transactions.
+- Active transaction revisions determine the ledger state; stored holdings are its current-position read model, rebuilt atomically during create/edit/delete replay.
 - Selling more than the current holding quantity must be prevented.
 - BUY transactions increase holdings and recalculate average buy price.
 - SELL transactions reduce holdings and calculate realised profit/loss.
@@ -98,7 +98,7 @@ The app is transaction-driven.
 
 - CoinGecko is used for market data.
 - Supported symbols should be handled consistently across frontend and backend.
-- Backend uses `CoinGeckoSymbolMapper` in `util/` to map symbols to CoinGecko numeric IDs.
+- Backend uses `CoinGeckoSymbolMapper` in `util/` to map symbols to CoinGecko string IDs such as `bitcoin`.
 - Frontend uses `SUPPORTED_COIN_PRESETS` list in `supportedCoins.ts` to provide quick-access trading presets.
 - Avoid unsupported or invalid symbol/name combinations.
 - Prefer centralised mapping/list for supported symbols—do not duplicate symbol/name mappings across many files.
@@ -135,6 +135,10 @@ cd backend
 - Integration tests use `@SpringBootTest` with `@AutoConfigureMockMvc` (Spring Boot 4 feature).
 - Most integration tests activate the `test` profile, which combines `application-test.yaml` and the test-resource overrides in `application-test.properties`: H2 in-memory database with `ddl-auto=create-drop` and Flyway disabled for isolation.
 - `PostgresDatabaseIntegrationTest` uses PostgreSQL Testcontainers with Flyway enabled and requires a Docker-compatible runtime.
-- `@Import(TestConfig.class)` provides mocked beans (e.g., `MarketDataService`) via Mockito to prevent external API calls.
+- `IntegrationTestSupport` provides the `@MockitoBean MarketDataService` override to prevent external market API calls. `@Import(TestConfig.class)` provides the Jackson 2 `ObjectMapper` used by existing test fixtures.
 - Use `ObjectMapper` for JSON serialization in assertions.
-- Tests are isolated per-test-method; schema is recreated for each test.
+- Schema lifecycle follows the Spring test context or Testcontainers fixture; it is not recreated automatically for every test method. Use isolated fixture data and explicit cleanup where needed.
+
+## Current Audit
+
+- Read `PROJECT_AUDIT.md` and the dated priorities in `tasklist.MD` before selecting new work. Confirm findings against current code before implementation; this audit is a point-in-time assessment.

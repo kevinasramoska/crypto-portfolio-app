@@ -1,7 +1,6 @@
 package com.kevinas.crypto_portfolio_backend.service.impl;
 
 import com.kevinas.crypto_portfolio_backend.model.*;
-import com.kevinas.crypto_portfolio_backend.repository.TransactionRepository;
 import com.kevinas.crypto_portfolio_backend.repository.PortfolioSnapshotRepository;
 import com.kevinas.crypto_portfolio_backend.repository.UserRepository;
 import com.kevinas.crypto_portfolio_backend.service.PortfolioHistoryService;
@@ -11,10 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -26,53 +23,27 @@ public class PortfolioHistoryServiceImpl implements PortfolioHistoryService {
     private final PortfolioService portfolioService;
     private final PortfolioSnapshotRepository portfolioSnapshotRepository;
     private final UserRepository userRepository;
-    private final TransactionRepository transactionRepository;
 
     @Override
-    @Transactional
     public void captureSnapshotForUser(Long userId) {
-        User user = userRepository.findByIdForUpdate(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-
-        captureSnapshotIfEligible(user);
+        portfolioService.createDailySnapshotForUser(userId);
     }
 
     @Override
-    @Transactional
     public void captureSnapshotsForAllUsers() {
-        userRepository.findAll().forEach(user -> {
-            User lockedUser = userRepository.findByIdForUpdate(user.getId())
-                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
-            captureSnapshotIfEligible(lockedUser);
-        });
-    }
-
-    private void captureSnapshotIfEligible(User user) {
-        if (!transactionRepository.existsByUserAndVoidedAtIsNull(user)) {
-            log.debug("Skipping scheduled snapshot for user {} because no transactions exist", user.getId());
-            return;
+        long after = 0;
+        while (true) {
+            List<Long> ids = userRepository.findIdsAfter(after, org.springframework.data.domain.PageRequest.of(0, 100));
+            if (ids.isEmpty()) return;
+            for (Long id : ids) {
+                try {
+                    captureSnapshotForUser(id);
+                } catch (RuntimeException exception) {
+                    log.warn("Scheduled snapshot failed for user {}; continuing batch", id, exception);
+                }
+            }
+            after = ids.getLast();
         }
-
-        Instant startOfDay = Instant.now()
-                .atZone(ZoneId.systemDefault())
-                .truncatedTo(ChronoUnit.DAYS)
-                .toInstant();
-        Instant endOfDay = startOfDay.plus(1, ChronoUnit.DAYS);
-
-        if (portfolioSnapshotRepository.existsByUserAndSnapshotAtBetween(user, startOfDay, endOfDay)) {
-            return;
-        }
-
-        var summary = portfolioService.getPortfolioSummaryForUser(user);
-
-        PortfolioSnapshot snapshot = PortfolioSnapshot.builder()
-                .user(user)
-                .totalInvestedUsd(summary.getTotalInvestedUsd())
-                .totalCurrentValueUsd(summary.getTotalCurrentValueUsd())
-                .totalProfitLossUsd(summary.getTotalProfitLossUsd())
-                .build();
-
-        portfolioSnapshotRepository.save(snapshot);
     }
 
     @Override

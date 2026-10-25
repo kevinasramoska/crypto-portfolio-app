@@ -280,14 +280,14 @@ class TransactionControllerIntegrationTest extends IntegrationTestSupport {
     void invalidHistoricalEdit_shouldRollbackAuditHoldingsAndSnapshots() throws Exception {
         String email = "invalid-editor@example.com";
         String token = getJwtToken(email, "password");
-        when(marketDataService.getCurrentPrice("INVALIDEDIT")).thenReturn(new BigDecimal("200.00"));
+        when(marketDataService.getCurrentPrice("BADEDIT")).thenReturn(new BigDecimal("200.00"));
 
         TransactionResponse buy = createTransaction(token, new TransactionRequest(
-                "INVALIDEDIT", "Invalid Edit Coin", TransactionType.BUY,
+                "BADEDIT", "Invalid Edit Coin", TransactionType.BUY,
                 new BigDecimal("1.00000000"), new BigDecimal("100.00")
         ));
         createTransaction(token, new TransactionRequest(
-                "INVALIDEDIT", "Invalid Edit Coin", TransactionType.SELL,
+                "BADEDIT", "Invalid Edit Coin", TransactionType.SELL,
                 new BigDecimal("1.00000000"), new BigDecimal("200.00")
         ));
 
@@ -299,7 +299,7 @@ class TransactionControllerIntegrationTest extends IntegrationTestSupport {
                 .toList();
 
         TransactionRequest invalidCorrection = new TransactionRequest(
-                "INVALIDEDIT", "Invalid Edit Coin", TransactionType.BUY,
+                "BADEDIT", "Invalid Edit Coin", TransactionType.BUY,
                 new BigDecimal("0.50000000"), new BigDecimal("100.00")
         );
         mockMvc.perform(put("/api/transactions/{id}", buy.id())
