@@ -24,7 +24,7 @@ Recent dashboard reliability work added clearer unsupported market-data display,
 | Migrations | Flyway |
 | External API | CoinGecko |
 | Backend tests | JUnit 5, Spring Boot Test, MockMvc, Mockito, H2, PostgreSQL Testcontainers |
-| Frontend | Next.js 16.3.0 App Router, React 19.2.8, TypeScript |
+| Frontend | Next.js 16.4.3 App Router, React 19.2.8, TypeScript |
 | Styling | Tailwind CSS |
 | Local infrastructure | Docker Compose, PostgreSQL, pgAdmin |
 
