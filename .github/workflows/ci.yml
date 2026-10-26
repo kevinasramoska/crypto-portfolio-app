@@ -24,7 +24,7 @@ jobs:
           java-version: "25"
           cache: maven
       - run: ./mvnw test
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
       - run: ./mvnw -B dependency:tree -Dscope=runtime -DoutputType=json -DoutputFile=target/dependencies.json
@@ -59,7 +59,7 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: npm
@@ -89,7 +89,7 @@ jobs:
           distribution: temurin
           java-version: "25"
           cache: maven
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: npm
