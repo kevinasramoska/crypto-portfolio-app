@@ -50,7 +50,7 @@ import static org.mockito.Mockito.when;
 class PostgresDatabaseIntegrationTest extends IntegrationTestSupport {
 
     @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(DockerImageName.parse("postgres:16-alpine"));
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(DockerImageName.parse("postgres:17-alpine"));
 
     @DynamicPropertySource
     static void configureDataSource(DynamicPropertyRegistry registry) {
