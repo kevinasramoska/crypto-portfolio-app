@@ -42,7 +42,9 @@ export default function Navbar({ showAuthLinks = true }: Props) {
           Crypto<span className="text-purple-400">Tracker</span>
         </Link>
 
-        <div className="flex items-center gap-2 text-sm sm:gap-4">
+        <div className="flex flex-wrap items-center gap-2 text-sm sm:gap-4">
+          <Link href="/demo" aria-current={pathname === "/demo" ? "page" : undefined} className="rounded-md px-2 py-1.5 text-purple-200 hover:bg-purple-500/10">Demo</Link>
+          <Link href="/engineering" aria-current={pathname === "/engineering" ? "page" : undefined} className="rounded-md px-2 py-1.5 text-gray-300 hover:text-purple-200">Engineering</Link>
           <Link
             href="/dashboard"
             aria-current={dashboardIsActive ? "page" : undefined}

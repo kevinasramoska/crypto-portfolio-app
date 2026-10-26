@@ -74,6 +74,10 @@ public class Transaction {
     @NotNull
     private Instant createdAt;
 
+    @Column(nullable = false, updatable = false)
+    @NotNull
+    private Instant executedAt;
+
     @PrePersist
     public void prePersist() {
         if (this.createdAt == null) {
@@ -81,6 +85,9 @@ public class Transaction {
         }
         if (this.totalValueUsd == null) {
             this.totalValueUsd = BigDecimal.ZERO;
+        }
+        if (this.executedAt == null) {
+            this.executedAt = this.createdAt;
         }
         if (this.realisedProfitUsd == null) {
             this.realisedProfitUsd = BigDecimal.ZERO;

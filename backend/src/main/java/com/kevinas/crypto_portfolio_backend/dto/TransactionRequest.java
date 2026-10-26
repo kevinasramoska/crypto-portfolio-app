@@ -31,8 +31,15 @@ public record TransactionRequest(
         @NotNull(message = "Price is required")
         @DecimalMin(value = "0.00", message = "Price must be 0 or greater")
         @Digits(integer = 12, fraction = 12)
-        BigDecimal priceUsd
+        BigDecimal priceUsd,
+
+        @jakarta.validation.constraints.PastOrPresent(message = "Execution time cannot be in the future")
+        java.time.Instant executedAt
 ) {
+    public TransactionRequest(String symbol, String name, TransactionType type, BigDecimal quantity, BigDecimal priceUsd) {
+        this(symbol, name, type, quantity, priceUsd, null);
+    }
+
     public TransactionRequest {
         symbol = symbol == null ? null : symbol.trim().toUpperCase(java.util.Locale.ROOT);
         name = name == null ? null : name.trim();
