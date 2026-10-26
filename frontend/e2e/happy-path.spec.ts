@@ -75,6 +75,18 @@ test("registers, logs in, creates a transaction, and shows dashboard data", asyn
   await expect(page.getByTestId("transaction-row-BTC-buy")).toContainText("$55,000.00");
   await expect(page.getByTestId("holding-row-BTC")).toContainText("$55,000.00");
 
+  const downloadReady = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export CSV" }).click();
+  const download = await downloadReady;
+  expect(download.suggestedFilename()).toMatch(/^transactions-.*\.csv$/);
+  const stream = await download.createReadStream();
+  if (!stream) throw new Error("CSV download was not readable");
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+  const csv = Buffer.concat(chunks).toString("utf8");
+  expect(csv).toContain('"BTC","Bitcoin","1","55000"');
+  expect(csv.split("\n")).toHaveLength(2);
+
   page.once("dialog", dialog => dialog.accept());
   await page.getByRole("button", { name: "Delete" }).click();
   await expect(page.getByText("No transactions yet. Record a buy or sell transaction to get started.")).toBeVisible();

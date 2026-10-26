@@ -1,6 +1,6 @@
 # Project Audit and Prioritized Roadmap
 
-Updated: 2026-10-25. Code inspection, dependency queries, and isolated runtime/browser probes were performed on 2026-10-24.
+Updated: 2026-10-26. Original code inspection, dependency queries, and isolated runtime/browser probes were performed on 2026-10-24; PR #11 follow-up review is recorded below.
 
 ## Assessment
 
@@ -26,12 +26,12 @@ The original evidence below is retained as a baseline, not a description of the 
 | A11 | Supported asset names are canonical; custom names belong to each user's transaction/holding. Race-safe shared catalog insertion and formula-safe CSV text cells. Legacy custom names already lost by the old shared table need owner correction. |
 | A12 | Normalized identities, collision-safe migration, same-page/cross-tab session events, expiry updates, and stale-session response guards. **Residual:** public registration enumeration/lifecycle policy below is not solved by changing error wording. |
 | A13 | Keyset user batches, isolated per-user write transactions/failures, source quotes fetched before acquiring snapshot write locks, and duplicate-day checks under lock. Post-commit capture remains synchronous with bounded upstream I/O. |
-| A14 | API pages capped at 100; database totals aggregation; chunked CSV and bounded legacy history (10,000 rows); cross-user first-use concurrency and 1,000-row replay checks. Replay remains linear by design, not a claim of unlimited scale. |
+| A14 | API pages capped at 100; database totals aggregation; bounded single-snapshot CSV/history (10,000 rows); cross-user first-use concurrency and 1,000-row replay checks. Replay remains linear by design, not a claim of unlimited scale. |
 | A15 | Non-root production-default image, fail-fast production secret/TLS/origin validation, loopback local database/admin ports, and explicit release/restore/trusted-proxy runbook. Live hosting/proxy configuration still requires operator verification. |
 
 See [RELEASE_RUNBOOK.md](RELEASE_RUNBOOK.md) for migration preflight, backup/restore, exact production requirements, and residual launch gates.
 
-### Verification evidence
+### Verification evidence — 2026-10-25
 
 - Clean Java 25 backend run: **79 tests passed**, including nine real PostgreSQL cases, cross-position/half-cent rounding, a V4→V7 legacy-data upgrade, concurrent first-use catalog insertion, 1,000 active-row replay, and dump/restore into a separate disposable database.
 - Frontend: **39 tests passed**, including last-row pagination and same-tab/cross-tab expiry/logout cases; coverage generation, lint, TypeScript, and optimized Next.js build passed. The coverage report is evidence of tested paths, not a claim of full coverage.
@@ -46,6 +46,18 @@ The synthetic restore is not a restore of production data and does not certify a
 ### Deliberately unresolved decisions
 
 Preserving the current registration API (JWT on success, error for duplicate) permits email enumeration. A uniform acknowledgement/email-verification flow needs a configured mail provider and an agreed contract change; no provider, recovery system, destructive account deletion, or deployment was silently introduced. This remains a public-launch gate, not a completed security fix. A production backup restore, trusted-proxy proof, distributed rate limiter, penetration test, and full accessibility audit cannot be certified from local repository checks.
+
+## PR #11 follow-up review — 2026-10-26
+
+Three definite issues were reproduced and corrected before pushing the review update:
+
+- **P1 — Upgrade overflow:** V5's increased fractional scale reduced its integer capacity, rejecting valid V4 prices. Widened the new V5 columns and matching `model/Holding.java` / `model/Transaction.java` mappings without changing fractional scales or API input limits. `PostgresDatabaseIntegrationTest.java` upgrades large legacy prices/cumulative costs without losing audit rows and checks both sides of the 10,000-row export boundary. See `RELEASE_RUNBOOK.md` for the warning about databases that already applied a pre-review branch revision.
+- **P2 — Pending mutation restores old selection:** `frontend/src/hooks/useDashboardData.ts` now reads the current range/page when a save finishes. An older delete cannot decrement a newly selected page. `useDashboardData.test.tsx` covers pending saves/deletes, obsolete responses, and session changes.
+- **P2 — Offset export can omit/duplicate rows:** `service/TransactionServiceImpl.java` serves the existing bounded history endpoint in one read-only repeatable-read transaction rather than the hook stitching together moving offset pages. The same hook test covers completeness, size limits, and logout; `frontend/e2e/happy-path.spec.ts` reads the downloaded CSV after editing a trade. CSV escaping and endpoint response shapes are unchanged.
+
+These changes add no dependencies or external services, and no production database migrations were run. React review guidance informed the stable callbacks/current-selection guard; the verification flow follows the edited trade through the API, persisted ledger/holding, dashboard, and downloaded CSV.
+
+The regression inventory is now 80 backend tests (including ten real PostgreSQL cases) and 44 frontend tests. Focused legacy-migration/rounding checks, all 44 frontend tests with coverage, lint, TypeScript, the production build, and npm audit passed locally. Full backend, browser, dependency, and container checks remain release gates for the exact pushed SHA; original measurements above are dated rather than presented as new review results.
 
 ## Baseline scope and evidence — 2026-10-24
 

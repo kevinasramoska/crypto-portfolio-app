@@ -1,8 +1,9 @@
 -- Historical input already rounded to cents cannot be recovered.
-ALTER TABLE transactions ALTER COLUMN price_usd TYPE NUMERIC(28,12);
-ALTER TABLE transactions ALTER COLUMN realised_profit_usd TYPE NUMERIC(38,20);
-ALTER TABLE holdings ALTER COLUMN average_buy_price_usd TYPE NUMERIC(28,12);
-ALTER TABLE holdings ADD COLUMN cost_basis_usd NUMERIC(38,20);
+-- Preserve the integer range of legacy NUMERIC(19,2) prices and cumulative positions.
+ALTER TABLE transactions ALTER COLUMN price_usd TYPE NUMERIC(38,12);
+ALTER TABLE transactions ALTER COLUMN realised_profit_usd TYPE NUMERIC(50,20);
+ALTER TABLE holdings ALTER COLUMN average_buy_price_usd TYPE NUMERIC(38,12);
+ALTER TABLE holdings ADD COLUMN cost_basis_usd NUMERIC(50,20);
 UPDATE holdings SET cost_basis_usd = quantity * average_buy_price_usd;
 ALTER TABLE transactions ADD COLUMN asset_name VARCHAR(255);
 ALTER TABLE holdings ADD COLUMN asset_name VARCHAR(255);

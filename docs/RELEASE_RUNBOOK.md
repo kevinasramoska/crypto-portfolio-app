@@ -16,6 +16,12 @@ Do not deploy to real-user data until all checks below have evidence. Repository
    Resolve account ownership manually. Migration fails on collisions; it never deletes or merges accounts automatically. Normalization changes mixed-case JWT subjects: affected existing sessions must sign in again.
 4. Rehearse V1–V7 against a restored staging copy, including transaction edit/delete, sub-cent prices, partial sells, and snapshots. V7 streams active ledger rows and recalculates cost/profit from retained inputs. Never edit applied migration files. Historical prices already rounded by old versions and original custom names discarded by shared metadata cannot be reconstructed: owners must correct affected records.
 
+### PR #11 pre-release migration correction
+
+The 2026-10-26 review widened the **new, unmerged** V5 numeric columns to preserve the full integer range of V4 prices and cumulative holdings. Fractional scales remain 12 for prices/averages and 20 for cost basis/profit. V1–V4 were not changed. The upgrade test includes a legacy unit price of `10000000000000000` and a cost basis of `1000000000000000000`; both must migrate without overflow. New API input limits remain unchanged.
+
+If you already ran an earlier revision of this PR against a database, its V5 checksum/schema will differ. Do **not** blindly run Flyway repair or change migration-history records: that does not widen existing columns or replay data. Recreate only a confirmed disposable development database, or back up retained data and plan an explicit forward reconciliation of its schema and ledger before release. No live database was changed during this review.
+
 ## Deployment configuration
 
 - Use Java 25 LTS (local verification uses Temurin 25.0.4+7), Node 24 LTS, and the committed lockfile. The runtime selects the official `25-jre-ubi10-minimal` variant with vendor updates rather than an implicit OS/full userspace; its Java patch is Temurin 25.0.4.1+1. Build images from the release SHA, record their immutable digest, and refresh/scan base images regularly. Do not claim the floating Java 25 image tag pins a particular patch.

@@ -41,7 +41,7 @@ public class Transaction {
     @Positive
     private BigDecimal quantity;
 
-    @Column(nullable = false, precision = 28, scale = 12)
+    @Column(nullable = false, precision = 38, scale = 12)
     @NotNull
     @DecimalMin("0.00")
     private BigDecimal priceUsd;
@@ -54,7 +54,7 @@ public class Transaction {
     @DecimalMin("0.00")
     private BigDecimal totalValueUsd;
 
-    @Column(nullable = false, precision = 38, scale = 20)
+    @Column(nullable = false, precision = 50, scale = 20)
     @NotNull
     private BigDecimal realisedProfitUsd;
 

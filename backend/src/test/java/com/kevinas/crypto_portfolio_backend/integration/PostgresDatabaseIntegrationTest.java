@@ -221,12 +221,33 @@ class PostgresDatabaseIntegrationTest extends IntegrationTestSupport {
             sql.executeUpdate("INSERT INTO transactions (user_id,coin_id,type,quantity,price_usd,total_value_usd,realised_profit_usd,ledger_sequence,created_at) "
                     + "VALUES (901,901,'BUY',1,0.01,0.01,0,1,CURRENT_TIMESTAMP),(901,901,'BUY',1,0.02,0.02,0,2,CURRENT_TIMESTAMP)");
             sql.executeUpdate("INSERT INTO holdings (user_id,coin_id,quantity,average_buy_price_usd) VALUES (901,901,2,0.02)");
+            sql.executeUpdate("INSERT INTO coins (id,symbol,name) VALUES (902,'LARGE','Large legacy values')");
+            sql.executeUpdate("INSERT INTO transactions (user_id,coin_id,type,quantity,price_usd,total_value_usd,realised_profit_usd,ledger_sequence,created_at) "
+                    + "SELECT 901,902,'BUY',1,10000000000000000,10000000000000000,0,n+2,CURRENT_TIMESTAMP FROM generate_series(1,100) AS n");
+            sql.executeUpdate("INSERT INTO holdings (user_id,coin_id,quantity,average_buy_price_usd) VALUES (901,902,100,10000000000000000)");
         }
         org.flywaydb.core.Flyway.configure().dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
                 .schemas("legacy_precision").defaultSchema("legacy_precision").load().migrate();
-        assertThat(jdbcTemplate.queryForObject("SELECT cost_basis_usd FROM legacy_precision.holdings", BigDecimal.class)).isEqualByComparingTo("0.03");
-        assertThat(jdbcTemplate.queryForObject("SELECT average_buy_price_usd FROM legacy_precision.holdings", BigDecimal.class)).isEqualByComparingTo("0.015");
-        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM legacy_precision.transactions", Integer.class)).isEqualTo(2);
+        assertThat(jdbcTemplate.queryForObject("SELECT cost_basis_usd FROM legacy_precision.holdings WHERE coin_id=901", BigDecimal.class)).isEqualByComparingTo("0.03");
+        assertThat(jdbcTemplate.queryForObject("SELECT average_buy_price_usd FROM legacy_precision.holdings WHERE coin_id=901", BigDecimal.class)).isEqualByComparingTo("0.015");
+        assertThat(jdbcTemplate.queryForObject("SELECT average_buy_price_usd FROM legacy_precision.holdings WHERE coin_id=902", BigDecimal.class)).isEqualByComparingTo("10000000000000000");
+        assertThat(jdbcTemplate.queryForObject("SELECT cost_basis_usd FROM legacy_precision.holdings WHERE coin_id=902", BigDecimal.class)).isEqualByComparingTo("1000000000000000000");
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM legacy_precision.transactions", Integer.class)).isEqualTo(102);
+    }
+
+    @Test
+    void fullHistoryExportAllowsItsBoundaryAndRejectsTruncation() {
+        User user = createAuthenticatedUser("bounded-export@example.com");
+        var coin = coinRepository.save(com.kevinas.crypto_portfolio_backend.model.Coin.builder().symbol("EXPORT").name("Export").build());
+        jdbcTemplate.update("INSERT INTO transactions (user_id,coin_id,type,quantity,price_usd,total_value_usd,realised_profit_usd,ledger_sequence,created_at) "
+                + "SELECT ?,?,'BUY',1,1,1,0,n,CURRENT_TIMESTAMP FROM generate_series(1,10000) AS n", user.getId(), coin.getId());
+        var exported = transactionService.getTransactionsForCurrentUser();
+        assertThat(exported).hasSize(10000);
+        assertThat(exported.getFirst().id()).isGreaterThan(exported.getLast().id());
+        jdbcTemplate.update("INSERT INTO transactions (user_id,coin_id,type,quantity,price_usd,total_value_usd,realised_profit_usd,ledger_sequence,created_at) "
+                + "VALUES (?,?,'BUY',1,1,1,0,10001,CURRENT_TIMESTAMP)", user.getId(), coin.getId());
+        assertThatThrownBy(() -> transactionService.getTransactionsForCurrentUser())
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("10,000");
     }
 
     @Test
