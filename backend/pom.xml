@@ -22,7 +22,7 @@
     <properties>
         <java.version>25</java.version>
         <lombok.version>1.18.38</lombok.version>
-        <jjwt.version>0.12.5</jjwt.version>
+        <jjwt.version>0.13.0</jjwt.version>
         <testcontainers.version>2.0.5</testcontainers.version>
         <springdoc.version>3.0.3</springdoc.version>
         <jacoco.version>0.8.15</jacoco.version>
