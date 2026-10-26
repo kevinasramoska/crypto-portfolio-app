@@ -4,6 +4,8 @@ import com.kevinas.crypto_portfolio_backend.dto.PaginatedTransactionsResponse;
 import com.kevinas.crypto_portfolio_backend.dto.TransactionRequest;
 import com.kevinas.crypto_portfolio_backend.dto.TransactionResponse;
 import com.kevinas.crypto_portfolio_backend.dto.TransactionSummaryResponse;
+import com.kevinas.crypto_portfolio_backend.dto.TransactionHistoryFilter;
+import com.kevinas.crypto_portfolio_backend.repository.TransactionSpecifications;
 import com.kevinas.crypto_portfolio_backend.event.PortfolioStateChangedEvent;
 import com.kevinas.crypto_portfolio_backend.exception.InsufficientHoldingsException;
 import com.kevinas.crypto_portfolio_backend.exception.TransactionConflictException;
@@ -58,11 +60,13 @@ public class TransactionServiceImpl implements TransactionService {
                 coin,
                 request,
                 transactionRepository.findMaximumLedgerSequence(user) + 1,
+                null,
                 null
         );
 
         Transaction saved = transactionRepository.saveAndFlush(transaction);
         replayActiveLedger(user, "Insufficient holdings to complete sell transaction");
+        if (request.executedAt() != null) invalidateSnapshots(user, saved.getExecutedAt());
         publishPortfolioChange(saved.getId(), user.getId());
         return toResponse(saved);
     }
@@ -74,7 +78,8 @@ public class TransactionServiceImpl implements TransactionService {
         Transaction currentRevision = getOwnedTransaction(transactionId, user);
         requireActiveRevision(currentRevision);
 
-        Instant historicalCutoff = currentRevision.getCreatedAt();
+        Instant originalCreatedAt = currentRevision.getCreatedAt();
+        Instant historicalCutoff = currentRevision.getExecutedAt();
         currentRevision.setVoidedAt(Instant.now());
         transactionRepository.saveAndFlush(currentRevision);
 
@@ -83,7 +88,8 @@ public class TransactionServiceImpl implements TransactionService {
                 resolveCoin(request),
                 request,
                 currentRevision.getLedgerSequence(),
-                historicalCutoff
+                originalCreatedAt,
+                currentRevision.getExecutedAt()
         );
         Transaction savedReplacement = transactionRepository.saveAndFlush(replacement);
 
@@ -91,7 +97,8 @@ public class TransactionServiceImpl implements TransactionService {
         transactionRepository.save(currentRevision);
 
         replayActiveLedger(user, "Transaction change would make a historical sell exceed available holdings");
-        invalidateSnapshots(user, historicalCutoff);
+        invalidateSnapshots(user, historicalCutoff.isBefore(savedReplacement.getExecutedAt())
+                ? historicalCutoff : savedReplacement.getExecutedAt());
         publishPortfolioChange(savedReplacement.getId(), user.getId());
         return toResponse(savedReplacement);
     }
@@ -103,7 +110,7 @@ public class TransactionServiceImpl implements TransactionService {
         Transaction currentRevision = getOwnedTransaction(transactionId, user);
         requireActiveRevision(currentRevision);
 
-        Instant historicalCutoff = currentRevision.getCreatedAt();
+        Instant historicalCutoff = currentRevision.getExecutedAt();
         currentRevision.setVoidedAt(Instant.now());
         transactionRepository.saveAndFlush(currentRevision);
 
@@ -115,9 +122,15 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public List<TransactionResponse> getTransactionsForCurrentUser() {
+        return getTransactionsForCurrentUser(TransactionHistoryFilter.empty());
+    }
+
+    @Override
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public List<TransactionResponse> getTransactionsForCurrentUser(TransactionHistoryFilter filter) {
         User user = getCurrentUser();
-        Page<Transaction> page = transactionRepository.findByUserAndVoidedAtIsNull(user,
-                PageRequest.of(0, 10000, Sort.by(Sort.Direction.DESC, "ledgerSequence")));
+        Page<Transaction> page = transactionRepository.findAll(TransactionSpecifications.activeHistory(user, filter),
+                PageRequest.of(0, 10000, historySort(filter)));
         if (page.hasNext()) throw new IllegalArgumentException("Use paginated history for more than 10,000 transactions");
         return page.getContent().stream()
                 .map(this::toResponse)
@@ -126,13 +139,19 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     public PaginatedTransactionsResponse getTransactionsForCurrentUserPaginated(int pageNumber, int pageSize) {
+        return getTransactionsForCurrentUserPaginated(pageNumber, pageSize, TransactionHistoryFilter.empty());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaginatedTransactionsResponse getTransactionsForCurrentUserPaginated(int pageNumber, int pageSize, TransactionHistoryFilter filter) {
         if (pageNumber < 0 || pageSize < 1 || pageSize > 100) {
             throw new IllegalArgumentException("Page must be non-negative and size must be between 1 and 100");
         }
         User user = getCurrentUser();
 
-        Pageable pageable = PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "ledgerSequence"));
-        Page<Transaction> page = transactionRepository.findByUserAndVoidedAtIsNull(user, pageable);
+        Pageable pageable = PageRequest.of(pageNumber, pageSize, historySort(filter));
+        Page<Transaction> page = transactionRepository.findAll(TransactionSpecifications.activeHistory(user, filter), pageable);
 
         List<TransactionResponse> content = page.getContent().stream()
                 .map(this::toResponse)
@@ -162,7 +181,7 @@ public class TransactionServiceImpl implements TransactionService {
 
     private void replayActiveLedger(User user, String insufficientHoldingsMessage) {
         List<Transaction> transactions = transactionRepository
-                .findByUserAndVoidedAtIsNullOrderByLedgerSequenceAsc(user);
+                .findByUserAndVoidedAtIsNullOrderByExecutedAtAscLedgerSequenceAsc(user);
         Map<Long, Position> positions = new LinkedHashMap<>();
 
         for (Transaction transaction : transactions) {
@@ -265,9 +284,15 @@ public class TransactionServiceImpl implements TransactionService {
             Coin coin,
             TransactionRequest request,
             Long ledgerSequence,
-            Instant createdAt
+            Instant createdAt,
+            Instant previousExecutionTime
     ) {
         requireMoneyRange(request.quantity().multiply(request.priceUsd()));
+        Instant executedAt = request.executedAt() != null ? request.executedAt()
+                : previousExecutionTime != null ? previousExecutionTime : Instant.now();
+        if (executedAt.isBefore(Instant.EPOCH) || executedAt.isAfter(Instant.now())) {
+            throw new IllegalArgumentException("Execution time must be between 1970 and now");
+        }
         return Transaction.builder()
                 .user(user)
                 .coin(coin)
@@ -281,6 +306,7 @@ public class TransactionServiceImpl implements TransactionService {
                 .realisedProfitUsd(scaleMoney(BigDecimal.ZERO))
                 .ledgerSequence(ledgerSequence)
                 .createdAt(createdAt)
+                .executedAt(executedAt.truncatedTo(java.time.temporal.ChronoUnit.MICROS))
                 .build();
     }
 
@@ -324,7 +350,8 @@ public class TransactionServiceImpl implements TransactionService {
                 transaction.getPriceUsd(),
                 scaleMoney(transaction.getTotalValueUsd()),
                 scaleMoney(transaction.getRealisedProfitUsd()),
-                transaction.getCreatedAt()
+                transaction.getCreatedAt(),
+                transaction.getExecutedAt()
         );
     }
 
@@ -332,6 +359,11 @@ public class TransactionServiceImpl implements TransactionService {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalStateException("Authenticated user not found"));
+    }
+
+    private Sort historySort(TransactionHistoryFilter filter) {
+        var direction = Sort.Direction.fromString(filter.direction());
+        return Sort.by(direction, filter.sort()).and(Sort.by(direction, "ledgerSequence")).and(Sort.by(direction, "id"));
     }
 
     private User getCurrentUserForUpdate() {

@@ -136,7 +136,7 @@ export default function TransactionsTable({
         <table className="w-full min-w-[780px] table-auto">
           <thead className="bg-gray-900/80 text-left text-xs uppercase tracking-wider text-gray-400">
             <tr>
-              <th className="px-6 py-3 font-semibold">Date</th>
+              <th className="px-6 py-3 font-semibold">Executed (local)</th>
               <th className="px-6 py-3 font-semibold">Type</th>
               <th className="px-6 py-3 font-semibold">Asset</th>
               <th className="px-6 py-3 font-semibold text-right">Quantity</th>
@@ -153,7 +153,7 @@ export default function TransactionsTable({
                   className="border-t border-gray-800/70 transition-colors hover:bg-purple-500/5"
                   data-testid={`transaction-row-${transaction.symbol}-${transaction.type.toLowerCase()}`}
                 >
-                  <td className="px-6 py-4 text-gray-300">{formatDate(transaction.createdAt)}</td>
+                  <td className="px-6 py-4 text-gray-300">{formatDate(transaction.executedAt ?? transaction.createdAt)}</td>
                   <td className="px-6 py-4">
                     <span
                       className={

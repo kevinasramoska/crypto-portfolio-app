@@ -11,6 +11,7 @@ import {
   Transaction,
   TransactionPayload,
   TransactionSummary,
+  TransactionHistoryFilters,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api";
@@ -136,13 +137,22 @@ export async function getPortfolioPerformanceHistory(
   return parseJson(res, "Failed to fetch portfolio performance history");
 }
 
-export async function getTransactions(): Promise<Transaction[]> {
-  const res = await authorizedFetch("/transactions");
+function historyQuery(filters?: TransactionHistoryFilters) {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters ?? {})) if (value) query.set(key, value);
+  return query;
+}
+
+export async function getTransactions(filters?: TransactionHistoryFilters): Promise<Transaction[]> {
+  const query = historyQuery(filters).toString();
+  const res = await authorizedFetch(`/transactions${query ? `?${query}` : ""}`);
   return parseJson(res, "Failed to fetch transactions");
 }
 
-export async function getTransactionsPaginated(page: number = 0, size: number = 20): Promise<PaginatedTransactions> {
-  const res = await authorizedFetch(`/transactions/paginated?page=${page}&size=${size}`);
+export async function getTransactionsPaginated(page: number = 0, size: number = 20, filters?: TransactionHistoryFilters): Promise<PaginatedTransactions> {
+  const query = new URLSearchParams({ page: String(page), size: String(size) });
+  historyQuery(filters).forEach((value, key) => query.set(key, value));
+  const res = await authorizedFetch(`/transactions/paginated?${query}`);
   return parseJson(res, "Failed to fetch paginated transactions");
 }
 

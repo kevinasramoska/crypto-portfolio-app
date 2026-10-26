@@ -89,7 +89,7 @@ class PostgresDatabaseIntegrationTest extends IntegrationTestSupport {
                 Integer.class
         );
 
-        assertThat(migrationCount).isEqualTo(7);
+        assertThat(migrationCount).isEqualTo(8);
         assertThat(jdbcTemplate.queryForObject("select to_regclass('public.portfolio_snapshots')", String.class))
                 .isEqualTo("portfolio_snapshots");
         assertThat(jdbcTemplate.queryForObject(
@@ -233,6 +233,7 @@ class PostgresDatabaseIntegrationTest extends IntegrationTestSupport {
         assertThat(jdbcTemplate.queryForObject("SELECT average_buy_price_usd FROM legacy_precision.holdings WHERE coin_id=902", BigDecimal.class)).isEqualByComparingTo("10000000000000000");
         assertThat(jdbcTemplate.queryForObject("SELECT cost_basis_usd FROM legacy_precision.holdings WHERE coin_id=902", BigDecimal.class)).isEqualByComparingTo("1000000000000000000");
         assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM legacy_precision.transactions", Integer.class)).isEqualTo(102);
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM legacy_precision.transactions WHERE executed_at <> created_at", Integer.class)).isZero();
     }
 
     @Test

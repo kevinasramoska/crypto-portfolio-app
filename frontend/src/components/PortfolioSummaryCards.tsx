@@ -5,6 +5,7 @@ import { PortfolioSummary } from "@/lib/types";
 type Props = {
   summary: PortfolioSummary | null;
   loading?: boolean;
+  sample?: boolean;
 };
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
@@ -26,13 +27,13 @@ function signedCurrency(value: number) {
   return `${value > 0 ? "+" : value < 0 ? "-" : ""}${formatCurrency(Math.abs(value))}`;
 }
 
-export default function PortfolioSummaryCards({ summary, loading }: Props) {
+export default function PortfolioSummaryCards({ summary, loading, sample = false }: Props) {
   const hasUnsupportedMarketData = summary?.hasUnsupportedMarketData ?? false;
   const cards = [
     {
       label: "Current value",
       value: formatCurrency(summary?.totalCurrentValueUsd),
-      helper: summary?.hasStaleMarketData ? "Cached market valuation" : "Latest market valuation",
+      helper: sample ? "Illustrative sample valuation" : summary?.hasStaleMarketData ? "Cached market valuation" : "Latest market valuation",
     },
     {
       label: "Invested",

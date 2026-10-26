@@ -127,8 +127,8 @@ describe("dashboard request lifecycle", () => {
     await waitFor(() => expect(result.current.transactions).toHaveLength(1));
     vi.mocked(api.getTransactionsPaginated).mockClear();
     await act(async () => result.current.handleDeleteTransaction(21));
-    await waitFor(() => expect(api.getTransactionsPaginated).toHaveBeenCalledWith(0, 20));
-    expect(api.getTransactionsPaginated).not.toHaveBeenCalledWith(1, 20);
+    await waitFor(() => expect(api.getTransactionsPaginated).toHaveBeenCalledWith(0, 20, { sort: "executedAt", direction: "desc" }));
+    expect(api.getTransactionsPaginated).not.toHaveBeenCalledWith(1, 20, expect.anything());
     expect(result.current.transactionPageNumber).toBe(0);
   });
 
@@ -150,6 +150,22 @@ describe("dashboard request lifecycle", () => {
     await act(async () => { deleting.resolve(); await mutation; });
     expect(result.current.transactionPageNumber).toBe(2);
     expect(result.current.transactions[0]?.id).toBe(3);
+  });
+
+  it("resets pagination and ignores an obsolete page response when filters change", async () => {
+    const { result } = renderHook(useDashboardData);
+    await waitFor(() => expect(result.current.transactionLoading).toBe(false));
+    const pending = deferred<Awaited<ReturnType<typeof api.getTransactionsPaginated>>>();
+    vi.mocked(api.getTransactionsPaginated).mockImplementation((page, size, filters) => filters?.symbol === "ETH"
+      ? Promise.resolve({ content: [{ id: 2 }], totalElements: 1, totalPages: 1 } as never) : pending.promise);
+    act(() => result.current.handleTransactionPageChange(1));
+    await waitFor(() => expect(api.getTransactionsPaginated).toHaveBeenCalledWith(1, 20, expect.anything()));
+    act(() => result.current.setTransactionFilters({ symbol: "ETH", sort: "executedAt", direction: "desc" }));
+    await waitFor(() => expect(result.current.transactions[0]?.id).toBe(2));
+    await act(async () => pending.resolve({ content: [{ id: 1 }], totalPages: 2, totalElements: 2 } as never));
+    expect(result.current.transactionPageNumber).toBe(0);
+    expect(result.current.transactions[0]?.id).toBe(2);
+    expect(result.current.transactionFilters.symbol).toBe("ETH");
   });
 
   it("rejects an oversized export before creating a download", async () => {

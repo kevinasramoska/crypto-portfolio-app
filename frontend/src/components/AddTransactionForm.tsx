@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { getSupportedCoins } from "@/lib/api";
 import { SUPPORTED_COIN_PRESETS } from "@/lib/supportedCoins";
 import { SupportedCoin, TransactionPayload, TransactionType } from "@/lib/types";
+import { executionTimeError } from "@/lib/dates";
 
 type Props = {
   onSubmit: (payload: TransactionPayload) => Promise<void>;
@@ -21,6 +22,7 @@ export default function AddTransactionForm({ onSubmit, disabled }: Props) {
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("");
   const [priceUsd, setPriceUsd] = useState("");
+  const [executedAt, setExecutedAt] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -54,6 +56,7 @@ export default function AddTransactionForm({ onSubmit, disabled }: Props) {
     setName("");
     setQuantity("");
     setPriceUsd("");
+    setExecutedAt("");
   }
 
   function handleCoinSelect(value: string) {
@@ -115,6 +118,9 @@ export default function AddTransactionForm({ onSubmit, disabled }: Props) {
       return;
     }
 
+    const timeError = executionTimeError(executedAt);
+    if (timeError) { setError(timeError); return; }
+
     try {
       setLoading(true);
       setError(null);
@@ -124,6 +130,7 @@ export default function AddTransactionForm({ onSubmit, disabled }: Props) {
         type,
         quantity: parsedQuantity,
         priceUsd: parsedPrice,
+        ...(executedAt ? { executedAt: new Date(executedAt).toISOString() } : {}),
       });
       resetForm();
     } catch (err) {
@@ -233,6 +240,12 @@ export default function AddTransactionForm({ onSubmit, disabled }: Props) {
         </label>
       </div>
 
+      <label className="flex flex-col gap-2 text-sm text-gray-400">
+        Execution time (your timezone, optional)
+        <input type="datetime-local" step="1" value={executedAt} onChange={event => setExecutedAt(event.target.value)}
+          disabled={disabled || loading} className="rounded-lg border border-gray-800 bg-gray-900/70 px-4 py-3 text-white" />
+        <span className="text-xs text-gray-500">Leave blank for now. Stored in UTC; backdated trades replay chronologically.</span>
+      </label>
       {error && <p className="rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-sm text-red-200" role="alert">{error}</p>}
 
       <button

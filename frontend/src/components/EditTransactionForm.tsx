@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { Transaction, TransactionPayload, TransactionType } from "@/lib/types";
+import { executionTimeError, toLocalDateTimeInput } from "@/lib/dates";
 
 type Props = {
   transaction: Transaction;
@@ -17,6 +18,8 @@ export default function EditTransactionForm({ transaction, onSubmit, onCancel }:
   const [name, setName] = useState(transaction.name);
   const [quantity, setQuantity] = useState(String(transaction.quantity));
   const [priceUsd, setPriceUsd] = useState(String(transaction.priceUsd));
+  const originalExecutionTime = transaction.executedAt ?? transaction.createdAt;
+  const [executedAt, setExecutedAt] = useState(toLocalDateTimeInput(originalExecutionTime));
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -49,6 +52,9 @@ export default function EditTransactionForm({ transaction, onSubmit, onCancel }:
       return;
     }
 
+    const timeError = executionTimeError(executedAt);
+    if (!executedAt || timeError) { setError(timeError ?? "Execution time is required."); return; }
+
     try {
       setLoading(true);
       setError(null);
@@ -58,6 +64,8 @@ export default function EditTransactionForm({ transaction, onSubmit, onCancel }:
         type,
         quantity: parsedQuantity,
         priceUsd: parsedPrice,
+        executedAt: executedAt === toLocalDateTimeInput(originalExecutionTime)
+          ? originalExecutionTime : new Date(executedAt).toISOString(),
       });
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Unable to update transaction.");
@@ -127,6 +135,12 @@ export default function EditTransactionForm({ transaction, onSubmit, onCancel }:
         </label>
       </div>
 
+      <label className="flex flex-col gap-1.5 text-xs text-gray-400">
+        Execution time (your timezone)
+        <input type="datetime-local" step="1" required value={executedAt} onChange={event => setExecutedAt(event.target.value)}
+          disabled={loading} className="rounded border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white" />
+      </label>
+      <p className="text-xs text-gray-500">Changing execution time replays the ledger. Historical oversells are rejected without changing your records.</p>
       {error && <p role="alert" className="text-sm text-red-300">{error}</p>}
 
       <div className="flex justify-end gap-2">

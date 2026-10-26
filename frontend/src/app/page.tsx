@@ -58,6 +58,7 @@ export default function Home() {
 
           {/* CTA Buttons */}
           <div className="flex flex-col gap-4 pt-4 sm:flex-row sm:gap-3">
+            <Link href="/demo" className="rounded-lg border border-purple-400/60 bg-purple-500/15 px-8 py-3 text-center font-semibold text-purple-100 transition hover:bg-purple-500/25">View demo portfolios</Link>
             {isSignedIn ? (
               <Link
                 href="/dashboard"
