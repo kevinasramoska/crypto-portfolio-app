@@ -10,6 +10,7 @@ import PortfolioSummaryCards from "@/components/PortfolioSummaryCards";
 import PriceTable from "@/components/PriceTable";
 import TransactionSummaryCards from "@/components/TransactionSummaryCards";
 import TransactionsTable from "@/components/TransactionsTable";
+import TransactionHistoryControls from "@/components/TransactionHistoryControls";
 import WatchlistControls from "@/components/WatchlistControls";
 import Link from "next/link";
 import { getMarketQuotes } from "@/lib/api";
@@ -90,6 +91,7 @@ export default function DashboardPage() {
     handleDeleteTransaction,
     handleTransactionPageChange,
     handleExportTransactions,
+    setTransactionFilters,
   } = useDashboardData();
 
   const displayHoldings = useMemo(() => {
@@ -411,8 +413,9 @@ export default function DashboardPage() {
           <section className="space-y-6">
             <div>
               <h2 className="text-2xl font-semibold">Transactions</h2>
-              <p className="text-sm text-gray-500">Most recent records from the backend transaction service.</p>
+              <p className="text-sm text-gray-500">Execution dates are shown in your timezone. Filter date boundaries use UTC.</p>
             </div>
+            <TransactionHistoryControls onApply={setTransactionFilters} />
             <TransactionsTable
               transactions={transactions}
               loading={transactionLoading}

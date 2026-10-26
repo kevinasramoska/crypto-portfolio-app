@@ -23,6 +23,7 @@ import {
   Transaction,
   TransactionPayload,
   TransactionSummary,
+  TransactionHistoryFilters,
 } from "@/lib/types";
 
 function isAuthError(error: unknown) {
@@ -31,7 +32,8 @@ function isAuthError(error: unknown) {
 
 function buildTransactionsCsv(transactions: Transaction[]) {
   const headers = [
-    "Date",
+    "Executed at UTC",
+    "Recorded at UTC",
     "Type",
     "Symbol",
     "Name",
@@ -42,6 +44,7 @@ function buildTransactionsCsv(transactions: Transaction[]) {
   ];
 
   const rows = transactions.map(transaction => [
+    transaction.executedAt ?? transaction.createdAt,
     transaction.createdAt,
     transaction.type,
     transaction.symbol,
@@ -57,10 +60,15 @@ function buildTransactionsCsv(transactions: Transaction[]) {
     .join("\n");
 }
 
+const DEFAULT_HISTORY_FILTERS: TransactionHistoryFilters = { sort: "executedAt", direction: "desc" };
+
 export function useDashboardData() {
   const requests = useRef({ portfolio: 0, transactions: 0, performance: 0 });
   // Pending mutations must refresh the selection at completion, not at submission.
-  const selection = useRef<{ range: PerformanceRange; page: number }>({ range: "30d", page: 0 });
+  const selection = useRef<{ range: PerformanceRange; page: number; filters: TransactionHistoryFilters }>({
+    range: "30d", page: 0, filters: DEFAULT_HISTORY_FILTERS,
+  });
+  const [transactionFilters, updateTransactionFilters] = useState<TransactionHistoryFilters>(DEFAULT_HISTORY_FILTERS);
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [portfolioSummary, setPortfolioSummary] = useState<PortfolioSummary | null>(null);
   const [lastPortfolioUpdated, setLastPortfolioUpdated] = useState<Date | null>(null);
@@ -155,7 +163,7 @@ export function useDashboardData() {
       setTransactionError(null);
 
       const [paginatedData, transactionSummaryData] = await Promise.all([
-        getTransactionsPaginated(selection.current.page, transactionPageSize),
+        getTransactionsPaginated(selection.current.page, transactionPageSize, selection.current.filters),
         getTransactionSummary(),
       ]);
       if (!current()) return;
@@ -245,6 +253,15 @@ export function useDashboardData() {
     setTransactionPageNumber(newPage);
   }, []);
 
+  const setTransactionFilters = useCallback((filters: TransactionHistoryFilters) => {
+    const next = { ...filters };
+    selection.current.filters = next;
+    selection.current.page = 0;
+    requests.current.transactions++;
+    setTransactionPageNumber(0);
+    updateTransactionFilters(next);
+  }, []);
+
   const handleUpdateTransaction = useCallback(
     async (transactionId: number, payload: TransactionPayload) => {
       await updateTransaction(transactionId, payload);
@@ -275,7 +292,7 @@ export function useDashboardData() {
       setExportTransactionsLoading(true);
 
       const token = getToken();
-      const allTransactions = await getTransactions();
+      const allTransactions = await getTransactions(selection.current.filters);
       if (token !== getToken()) throw new Error(AUTH_REQUIRED_MESSAGE);
       if (allTransactions.length > 10000) throw new Error("Export is limited to 10,000 transactions.");
       const csv = buildTransactionsCsv(allTransactions);
@@ -329,7 +346,7 @@ export function useDashboardData() {
       void loadTransactionData();
     }, 0);
     return () => window.clearTimeout(initialLoad);
-  }, [loadPortfolioData, loadTransactionData, transactionPageNumber]);
+  }, [loadPortfolioData, loadTransactionData, transactionPageNumber, transactionFilters]);
 
   useEffect(() => {
     const initialLoad = window.setTimeout(() => {
@@ -361,6 +378,8 @@ export function useDashboardData() {
     transactionTotalPages,
     transactionHasNext,
     transactionHasPrevious,
+    transactionFilters,
+    setTransactionFilters,
     refreshDashboard,
     handleCreateTransaction,
     handleUpdateTransaction,

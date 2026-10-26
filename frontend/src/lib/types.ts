@@ -36,6 +36,7 @@ export type Transaction = {
   totalValueUsd: number;
   realisedProfitUsd: number;
   createdAt: string;
+  executedAt?: string;
 };
 
 export type PaginatedTransactions = {
@@ -54,6 +55,16 @@ export type TransactionPayload = {
   type: TransactionType;
   quantity: number;
   priceUsd: number;
+  executedAt?: string;
+};
+
+export type TransactionHistoryFilters = {
+  symbol?: string;
+  type?: TransactionType;
+  from?: string;
+  to?: string;
+  sort?: "executedAt" | "totalValueUsd" | "quantity" | "priceUsd" | "ledgerSequence";
+  direction?: "asc" | "desc";
 };
 
 export type TransactionSummary = {

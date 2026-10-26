@@ -36,6 +36,17 @@ describe("AddTransactionForm", () => {
     expect(screen.getByRole("button", { name: "Save transaction" })).toBeInTheDocument();
   });
 
+  it("converts a local execution date to UTC before submitting", async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<AddTransactionForm onSubmit={onSubmit} />);
+    for (const [label, value] of [["Symbol", "BTC"], ["Name", "Bitcoin"], ["Quantity", "1"], ["Price USD", "10"],
+      ["Execution time (your timezone, optional)", "2026-01-01T12:00:00"]]) {
+      fireEvent.change(screen.getByLabelText(label, { exact: false }), { target: { value } });
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Save transaction" }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ executedAt: new Date("2026-01-01T12:00:00").toISOString() })));
+  });
+
   it("shows validation errors for invalid manual input", async () => {
     render(<AddTransactionForm onSubmit={vi.fn()} />);
 

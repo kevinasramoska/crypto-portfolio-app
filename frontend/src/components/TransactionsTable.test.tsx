@@ -34,6 +34,7 @@ describe("TransactionsTable", () => {
         type: "BUY",
         quantity: 1,
         priceUsd: 55000,
+        executedAt: "2026-08-08T12:00:00Z",
       });
     });
     expect(screen.queryByRole("form", { name: "Edit BTC transaction" })).not.toBeInTheDocument();

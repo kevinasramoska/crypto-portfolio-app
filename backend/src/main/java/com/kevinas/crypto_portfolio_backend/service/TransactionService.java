@@ -35,6 +35,7 @@ public interface TransactionService {
      * @return list of transaction responses
      */
     List<TransactionResponse> getTransactionsForCurrentUser();
+    List<TransactionResponse> getTransactionsForCurrentUser(com.kevinas.crypto_portfolio_backend.dto.TransactionHistoryFilter filter);
 
     /**
      * Retrieves paginated transactions for the authenticated user, ordered by creation date descending.
@@ -44,6 +45,8 @@ public interface TransactionService {
      * @return paginated transaction response
      */
     PaginatedTransactionsResponse getTransactionsForCurrentUserPaginated(int pageNumber, int pageSize);
+    PaginatedTransactionsResponse getTransactionsForCurrentUserPaginated(int pageNumber, int pageSize,
+            com.kevinas.crypto_portfolio_backend.dto.TransactionHistoryFilter filter);
 
     /**
      * Retrieves a summary of transactions for the authenticated user, including total buy/sell volumes and realised profit.

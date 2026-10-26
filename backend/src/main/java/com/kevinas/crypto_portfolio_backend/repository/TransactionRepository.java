@@ -11,7 +11,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
-public interface TransactionRepository extends JpaRepository<Transaction, Long> {
+public interface TransactionRepository extends JpaRepository<Transaction, Long>, org.springframework.data.jpa.repository.JpaSpecificationExecutor<Transaction> {
     @Query("select new com.kevinas.crypto_portfolio_backend.dto.TransactionSummaryResponse(" +
             "coalesce(sum(case when t.type = com.kevinas.crypto_portfolio_backend.model.TransactionType.BUY then t.quantity * t.priceUsd else 0 end), 0), " +
             "coalesce(sum(case when t.type = com.kevinas.crypto_portfolio_backend.model.TransactionType.SELL then t.quantity * t.priceUsd else 0 end), 0), " +
@@ -19,6 +19,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     com.kevinas.crypto_portfolio_backend.dto.TransactionSummaryResponse aggregateActiveTotals(@Param("user") User user);
     List<Transaction> findByUserAndVoidedAtIsNullOrderByLedgerSequenceDesc(User user);
     List<Transaction> findByUserAndVoidedAtIsNullOrderByLedgerSequenceAsc(User user);
+    List<Transaction> findByUserAndVoidedAtIsNullOrderByExecutedAtAscLedgerSequenceAsc(User user);
     Page<Transaction> findByUserAndVoidedAtIsNull(User user, Pageable pageable);
     boolean existsByUserAndVoidedAtIsNull(User user);
     Optional<Transaction> findByIdAndUser(Long id, User user);
