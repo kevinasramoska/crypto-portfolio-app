@@ -13,4 +13,5 @@ public interface PortfolioService {
     PortfolioSummaryResponse getPortfolioSummaryForUser(User user);
     PortfolioPerformanceHistoryResponse getPortfolioPerformanceHistory(String range);
     void createSnapshotForUser(Long userId);
+    void createDailySnapshotForUser(Long userId);
 }

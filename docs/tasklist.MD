@@ -2,20 +2,40 @@
 
 Use this as a working backlog for the crypto portfolio tracker. Tasks are grouped by urgency and type so you can pick them off gradually.
 
-## Current Improvement Roadmap
+## Audit Priorities — 2026-10-25
+
+The repository-wide review is recorded in [PROJECT_AUDIT.md](PROJECT_AUDIT.md), with evidence, severity, acceptance criteria, dependency advisory applicability, and portfolio/resume recommendations. The checked historical items below mean the feature exists; they do not mean all newly found edge cases are fixed.
+
+Recommended next work, in order:
+
+- [x] Land reviewed frontend security PR #10 and remediate backend dependency advisories; add automated scanning. **P1 — A01**
+- [x] Preserve sub-cent market prices and weighted cost basis through valuation and ledger replay. **P1 — A02/A03**
+- [x] Bound upstream latency/stale prices and preserve valuation quality in performance history. **P1 — A04/A05**
+- [x] Fix phone-width dashboard overflow and obsolete request responses. **P2 — A06/A07**
+- [x] Reject blank prices and invalid/unrepresentable backend inputs with correct error responses. **P2 — A08/A09**
+- [x] Restrict operational metrics to operators/admins. **P2 — A10**
+- [x] Protect shared coin metadata and CSV exports from formula-leading text. **P2 — A11**
+- [ ] Resolve remaining identity/session behavior and public-account lifecycle gaps. **P2 — A12**
+- [x] Isolate scheduled snapshot work by user and bound page/export/summary workloads. **P2 — A13/A14**
+- [x] Add a repeatable production release, backup/restore, and container-hardening gate. **P2 — A15**
+- [ ] Add a synthetic populated demo, screenshots, and an architecture case study after the correctness fixes. **Portfolio milestone 5**
+
+Checked audit items are implemented on `codex/audit-hardening`, not a claim of deployment. PR #10 is reviewed and merged. See the audit's remediation/evidence section and release runbook. Email normalization and session synchronization are implemented; a non-enumerating registration/recovery/verification lifecycle still requires a product/API/provider decision. Live release/proxy verification remains an operator gate.
+
+## Existing Improvement Roadmap
 
 This is the recommended order for the next phase of work. The sections below preserve the historical backlog and completed work.
 
 ### Phase 1: Establish A Reliable Baseline
 
-- [ ] Review and commit the current working tree
+- [x] Review and commit the implementation baseline
   - Priority: P0
   - Confirm which untracked and modified files belong to the project before starting new feature work.
-  - Status: Audited and fully verified locally on 2026-08-08. Awaiting approval to stage and commit the reviewed changes.
+  - Status: Completed. Baseline work and the Java/frontend upgrade were committed and pushed; PR #9 is merged. The subsequent frontend security refresh is committed and pushed in PR #10. The old approval blocker is obsolete.
 - [x] Run the complete local verification suite
   - Priority: P0
   - Run backend tests, frontend lint, frontend tests, frontend build, and Playwright E2E.
-  - Status: Completed locally on 2026-08-08: backend tests (55 tests, including PostgreSQL Testcontainers), frontend lint, Vitest (16 tests), production build, and Playwright E2E all passed.
+  - Status: Hardening validation on 2026-10-25: 79 backend tests including nine PostgreSQL cases, 39 frontend tests, coverage, lint, production build, and Chromium E2E passed. PR #10 CI was green before merge. See `PROJECT_AUDIT.md` for advisory/container results and residual launch gates.
 - [x] Add a GitHub Actions CI workflow
   - Priority: P0
   - Run Maven tests, frontend lint/tests/build, and E2E on pull requests.
@@ -34,7 +54,7 @@ This is the recommended order for the next phase of work. The sections below pre
 - [x] Review authentication and secret handling
   - Priority: P1
   - Verify password rules, JWT expiry, secret requirements, CORS origins, error responses, and production defaults.
-  - Status: Completed. Passwords remain consistently enforced at 8-72 characters and stored with BCrypt; JWT secrets and expiry validate at startup; production requires explicit JWT and CORS settings; and duplicate registration does not reveal email state.
+  - Status: Core controls are implemented: BCrypt, password-length rules, JWT secret/expiry startup validation, and explicit production JWT/CORS settings. The wider review found remaining identity/session concerns (A12), a UTF-8 BCrypt byte-limit edge case (A09), and deployment-profile risks (A15). Generic duplicate-registration wording does not prevent email enumeration because success and duplicate responses differ.
 - [x] Add rate limiting to authentication and market-data endpoints
   - Priority: P1
   - Protect login/register and external API usage from abuse and accidental request loops.
@@ -42,14 +62,15 @@ This is the recommended order for the next phase of work. The sections below pre
 - [x] Add database integration tests using PostgreSQL Testcontainers
   - Priority: P1
   - Exercise Flyway migrations, constraints, transaction rollbacks, and decimal/quantity behavior against the real database engine.
-  - Status: Completed with a PostgreSQL Testcontainers suite that checks Flyway history/schema, unique constraints, rollback of an invalid sell, and persisted numeric scale. All three container-backed tests pass locally with Docker and are included in CI.
+  - Status: Nine PostgreSQL cases now cover schema, rollback, precise unit prices, same-user/cross-user concurrency, legacy migration, 1,000-row replay, and isolated backup/restore. HTTP regressions additionally cover sub-cent, weighted-cost, and aggregate rounding.
 - [x] Make transaction writes and snapshot creation behavior explicit
   - Priority: P1
   - Decide whether snapshot failure should be retried, reported, or kept best-effort, then cover the chosen behavior with tests.
   - Status: Completed. Transaction and holding writes commit atomically; an `AFTER_COMMIT` listener creates a snapshot in a separate transaction. Snapshot failures are logged with transaction and user IDs, do not invalidate the committed transaction, and the existing scheduled snapshots provide later recovery.
-- [ ] Add backup and migration recovery documentation
+- [x] Add backup and migration recovery documentation
   - Priority: P2
   - Document PostgreSQL backup/restore, Flyway failure recovery, and production rollback steps.
+  - Status: `RELEASE_RUNBOOK.md` covers preflight, identity collisions, isolated restore, and rollback/cutover gates. Disposable database restoration passes; real production restoration remains an operator gate.
 
 ### Phase 3: Improve The Product
 
@@ -59,19 +80,21 @@ This is the recommended order for the next phase of work. The sections below pre
   - Status: Completed. Creates, edits, and deletes are serialized per user; edits preserve voided audit revisions and stable ledger order; active transactions are replayed atomically to rebuild holdings and realised P/L; historically invalid sells return `409` with full rollback; affected snapshots are invalidated and refreshed after commit; and the dashboard supports edit/delete workflows.
 - [ ] Add date/time to transactions
   - Priority: P1
-  - Store an explicit transaction timestamp and use it in history, exports, and performance calculations.
-- [ ] Improve portfolio history accuracy
-  - Priority: P2
-  - Define whether snapshots represent end-of-day or point-in-time values and handle missing market prices clearly.
+  - `createdAt` already exists and appears in history/exports. The missing feature is a user-specified execution timestamp with an explicit backdating, timezone, and ledger-ordering policy.
+- [x] Improve portfolio history accuracy
+  - Priority: P1
+  - A05: define point-in-time versus daily sampling semantics and preserve missing/stale-price quality in stored history and its UI.
+  - Status: UTC sampling and persisted quality are implemented; legacy/stale/partial points are labelled and excluded from chart segments. History is explicitly not reconstructed or cash-flow-adjusted.
 - [ ] Add filtering and sorting to transaction history
   - Priority: P2
   - Support symbol, BUY/SELL type, date range, and amount sorting without loading unnecessary records.
-- [ ] Improve market-data resilience
-  - Priority: P2
-  - Add timeout, retry/backoff, cache expiry, rate-limit handling, and a visible stale-price state.
+- [x] Improve market-data resilience
+  - Priority: P1
+  - Status: Timeouts, a 60-second fresh TTL, five-minute maximum fallback age, batching, single refresh in flight, failure/429 backoff, and visible source freshness are implemented.
 - [ ] Add responsive and accessibility review
   - Priority: P2
   - Test keyboard navigation, focus states, labels, color contrast, mobile layouts, and screen-reader output.
+  - Status: Document overflow is fixed; full-stack width checks pass at 360/390/768/1440px. A complete keyboard/screen-reader/contrast audit remains open.
 - [ ] Add import/export workflow beyond CSV export
   - Priority: P3
   - Support validated CSV import with a preview, duplicate detection, and an error report.
@@ -84,15 +107,18 @@ This is the recommended order for the next phase of work. The sections below pre
 - [ ] Add error monitoring
   - Priority: P2
   - Integrate Sentry or an equivalent service for frontend and backend exceptions.
-- [ ] Add dependency and container security scanning
-  - Priority: P2
+- [x] Add dependency and container security scanning
+  - Priority: P1
   - Use Dependabot plus OWASP Dependency-Check or Snyk, and scan the backend image with Trivy.
-- [ ] Document deployment and environment promotion
+  - Status: Implemented weekly Dependabot plus Maven/npm and MEDIUM/HIGH/CRITICAL container CI gates. npm and resolved runtime OSV scans report zero matches; the final image is scanned independently. The original advisory inventory remains in A01 as historical evidence, not current dependency status.
+- [x] Document deployment and environment promotion
   - Priority: P2
-  - Define staging versus production variables, database setup, CORS configuration, health checks, and rollback steps.
+  - Basic Docker/Vercel deployment instructions already exist in the README. Add a repeatable staging/production release process, validated settings, backup/restore rehearsal, and rollback steps.
+  - Status: The runbook documents release/promotion, trusted proxies, restore, and rollback. A live deployment is not claimed.
 - [ ] Add performance checks for large portfolios
   - Priority: P3
   - Measure paginated transactions, portfolio calculations, market-data calls, and dashboard load time with realistic data volumes.
+  - Status: A 1,000-row replay/aggregate check and synthetic restore are measured; broader endpoint/browser/distributed load testing remains open. See the audit's hardware/dataset caveats.
 
 ### Phase 5: Optional Expansion
 
@@ -108,14 +134,14 @@ This is the recommended order for the next phase of work. The sections below pre
 
 ## Must Fix
 
-- [ ] Stabilize the current working tree
+- [x] Stabilize and commit the implementation baseline
 
   - Description: Review all modified, deleted, and untracked files and decide what should be committed.
   - Why it matters: The repo needs a clean checkpoint before more work.
   - Complexity: Low
   - Risk: Medium
   - Priority: P0
-  - Status: Working tree audited and fully verified locally on 2026-08-08. Remaining action is approval to stage and commit from `/Users/kevinasramoska/Desktop/crypto-portfolio-app`.
+  - Status: Completed. The implementation baseline, Java 25 upgrade, and frontend security refresh are committed and pushed. Audit documentation is a separate follow-up; the historical approval blocker no longer applies.
   - Files likely involved: `backend/src/**`, `frontend/src/**`, `README.md`, `docs/REPO_OVERVIEW.md`, `docs/tasklist.MD`
 
 - [x] Run full verification
@@ -194,7 +220,7 @@ This is the recommended order for the next phase of work. The sections below pre
   - Complexity: Medium
   - Risk: Medium
   - Priority: P1
-  - Status: Implemented in `authorizedFetch` by clearing stale auth session on `401`/`403`.
+  - Status: Implemented in `authorizedFetch`: clear expired auth on `401`, preserve sessions on permission-denied `403`, and do not clear a newer session for an old response.
   - Files likely involved: `auth.ts`, `api.ts`, `Navbar.tsx`, `dashboard/page.tsx`
 
 - [x] Add explicit CORS config
@@ -235,7 +261,7 @@ This is the recommended order for the next phase of work. The sections below pre
   - Complexity: Low
   - Risk: Low
   - Priority: P3
-  - Status: Completed. Timestamps now show both relative time ("2m ago", "1h ago") and absolute time (date + time) for both prices and portfolio data. Timestamps update in real-time without page refresh.
+  - Status: Implemented relative and absolute refresh labels. They reflect browser fetch completion and update on rerender, not an independent clock or the source quote's age. A04 tracks accurate quote timestamps and stale-state display.
   - Files involved: `frontend/src/app/dashboard/page.tsx`
 
 - [x] Improve home page
@@ -307,7 +333,7 @@ This is the recommended order for the next phase of work. The sections below pre
   - Risk: Low
   - Priority: P3
   - Files likely involved: `TransactionsTable.tsx`, possibly a backend endpoint
-  - Status: Completed. Added an `Export CSV` action in `TransactionsTable.tsx` and on-demand full-history CSV generation in `dashboard/page.tsx` using the existing transactions API.
+  - Status: Completed. `TransactionsTable.tsx` exposes the export action; `useDashboardData.ts` fetches full active transaction history and generates CSV. A11 tracks spreadsheet-safe text escaping; A14 tracks large-history export bounds.
 
 - [x] Add scheduled portfolio snapshots
   - Description: Create portfolio snapshots periodically, not only after transactions.
@@ -379,12 +405,12 @@ This is the recommended order for the next phase of work. The sections below pre
   - Risk: Low
   - Priority: P0
   - Files likely involved: `backend/src/test/**`
-  - Status: Completed locally on 2026-08-08: 55 tests across 17 suites passed, including the PostgreSQL Testcontainers suite.
+  - Status: The 2026-10-25 clean run passed 79 tests, including nine PostgreSQL tests and targeted precision, stale-data, permission, validation, migration, concurrency, and restore regressions. This supersedes the original 62-test baseline.
 
 - [x] Add frontend smoke tests
 
   - Description: Add tests for dashboard render, auth forms, and transaction form validation.
-  - Why it matters: Frontend currently has no tests.
+  - Why it matters: Protects dashboard rendering, auth forms, and transaction validation against regressions.
   - Complexity: Medium
   - Risk: Medium
   - Priority: P1
@@ -479,7 +505,7 @@ This is the recommended order for the next phase of work. The sections below pre
   - Risk: High
   - Priority: P2
   - Files likely involved: `HoldingRepository.java`, `TransactionServiceImpl.java`, `PortfolioServiceImpl.java`, migrations, tests
-  - Status: Completed. Clarified and aligned the design so `holdings` is the source of truth for current open positions, while `transactions` remains the audit log and realised-P/L source. `PortfolioServiceImpl` now reads current positions from `HoldingRepository` instead of rebuilding them from transaction history.
+  - Status: Completed. The active transaction ledger determines the replayed state; stored `holdings` is the current-position read model consumed by `PortfolioServiceImpl`. Every create/edit/delete replays active revisions and rebuilds that projection atomically. A03 tracks a rounding defect within that replay, not an undecided architecture.
 
 - [x] Clean up empty migration
 
@@ -508,4 +534,4 @@ This is the recommended order for the next phase of work. The sections below pre
   - Risk: Medium
   - Priority: P3
   - Files likely involved: `frontend/package.json`, `frontend/package-lock.json`
-  - Status: Completed. Reviewed the installed frontend dependency graph, kept the React 19 runtime/types alignment, and pinned `next` to `16.2.9` so it stays in lockstep with `eslint-config-next@16.2.9`.
+  - Status: PR #10 is reviewed and merged: Next.js/ESLint config `16.4.3`, React/ReactDOM `19.2.8`, Vitest/coverage `4.1.12`. The hardening branch upgrades Boot to `4.1.2`; npm and Maven runtime advisory scans return zero matches as of 2026-10-25. CI now repeats these scans.

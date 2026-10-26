@@ -31,6 +31,9 @@ class OperationalEndpointsIntegrationTest extends IntegrationTestSupport {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private com.kevinas.crypto_portfolio_backend.repository.UserRepository users;
+
     @Test
     void readinessProbe_shouldBePublic() throws Exception {
         mockMvc.perform(get("/actuator/health/readiness"))
@@ -41,17 +44,26 @@ class OperationalEndpointsIntegrationTest extends IntegrationTestSupport {
     @Test
     void metrics_shouldRequireAuthentication() throws Exception {
         mockMvc.perform(get("/actuator/metrics"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void metrics_shouldBeAvailableToAuthenticatedUsers() throws Exception {
+    void metrics_shouldRejectOrdinaryUsers() throws Exception {
         String accessToken = registerAndGetAccessToken("metrics@example.com");
 
         mockMvc.perform(get("/actuator/metrics")
                         .header("Authorization", "Bearer " + accessToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.names").isArray());
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void metrics_shouldBeAvailableToAdministrators() throws Exception {
+        String token = registerAndGetAccessToken("operator@example.com");
+        var operator = users.findByEmail("operator@example.com").orElseThrow();
+        operator.setRoles(java.util.Set.of(com.kevinas.crypto_portfolio_backend.model.Role.ADMIN));
+        users.save(operator);
+        mockMvc.perform(get("/actuator/metrics").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.names").isArray());
     }
 
     private String registerAndGetAccessToken(String email) throws Exception {

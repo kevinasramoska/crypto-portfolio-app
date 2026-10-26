@@ -82,11 +82,13 @@ export type PortfolioSummary = {
   totalProfitLossUsd: number;
   holdings: PortfolioHoldingSummary[];
   hasUnsupportedMarketData: boolean;
+  hasStaleMarketData?: boolean;
 };
 
 export type PerformanceRange = "7d" | "30d" | "90d";
 
 export type PortfolioPerformancePoint = {
+  valuationComplete?: boolean;
   snapshotAt: string;
   totalInvestedUsd: number;
   totalCurrentValueUsd: number;

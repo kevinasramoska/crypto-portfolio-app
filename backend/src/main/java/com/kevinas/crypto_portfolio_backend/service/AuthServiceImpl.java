@@ -23,6 +23,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public JwtResponse register(RegisterRequest request) {
+        validatePasswordBytes(request.password());
         if (userRepository.existsByEmail(request.email())) {
             throw new IllegalArgumentException("Registration failed");
         }
@@ -41,6 +42,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public JwtResponse login(LoginRequest request) {
+        validatePasswordBytes(request.password());
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
 
@@ -50,5 +52,11 @@ public class AuthServiceImpl implements AuthService {
 
         String token = jwtService.generateToken(user.getEmail());
         return new JwtResponse(token);
+    }
+
+    private void validatePasswordBytes(String password) {
+        if (password == null || password.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72) {
+            throw new IllegalArgumentException("Password must be at most 72 UTF-8 bytes");
+        }
     }
 }

@@ -1,3 +1,5 @@
+import { formatUnitPrice } from "@/lib/format";
+
 type Props = {
   symbol: string;
   price?: number;
@@ -6,13 +8,8 @@ type Props = {
   onRemove?: () => void;
 };
 
-export default function CryptoCard({ symbol, price, loading, currency = "EUR", onRemove }: Props) {
+export default function CryptoCard({ symbol, price, loading, currency = "USD", onRemove }: Props) {
   const hasPrice = typeof price === "number" && !Number.isNaN(price);
-  const formatter = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2,
-  });
 
   return (
     <div className="relative overflow-hidden rounded-xl border border-gray-800 bg-gray-950/70 p-5 text-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-purple-500/40 hover:shadow-lg hover:shadow-purple-950/20">
@@ -35,7 +32,7 @@ export default function CryptoCard({ symbol, price, loading, currency = "EUR", o
       {loading ? (
         <div className="mt-4 h-8 w-32 rounded-sm bg-gray-800 animate-pulse" />
       ) : hasPrice ? (
-        <p className="mt-4 text-3xl font-semibold tracking-tight text-purple-200 tabular-nums">{formatter.format(price)}</p>
+        <p className="mt-4 break-all text-3xl font-semibold tracking-tight text-purple-200 tabular-nums">{formatUnitPrice(price, currency)}</p>
       ) : (
         <p className="mt-4 text-sm font-medium text-amber-300">No market data</p>
       )}

@@ -12,18 +12,20 @@ The frontend provides login/register screens and a dashboard for watchlist price
 
 Recent dashboard reliability work added clearer unsupported market-data display, stale-token cleanup on auth failures, explicit local CORS support, improved empty states, and separated dashboard loading/error state by data slice.
 
+For the current readiness assessment, reproduced bugs, dependency advisory triage, and portfolio priorities, see [PROJECT_AUDIT.md](PROJECT_AUDIT.md), updated 2026-10-25. The feature descriptions here describe implemented capabilities, not a claim that all edge cases are resolved.
+
 ## 2. Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Backend | Java 25 LTS, Spring Boot 4.1.0 |
+| Backend | Java 25 LTS, Spring Boot 4.1.2 |
 | API | Spring MVC REST controllers |
 | Security | Spring Security, JWT, BCrypt |
 | Database | PostgreSQL |
 | ORM | Spring Data JPA, Hibernate |
 | Migrations | Flyway |
 | External API | CoinGecko |
-| Backend tests | JUnit 5, Spring Boot Test, MockMvc, Mockito, H2, PostgreSQL Testcontainers |
+| Backend tests | JUnit Jupiter 6, Spring Boot Test, MockMvc, Mockito, H2, PostgreSQL Testcontainers |
 | Frontend | Next.js 16.4.3 App Router, React 19.2.8, TypeScript |
 | Styling | Tailwind CSS |
 | Local infrastructure | Docker Compose, PostgreSQL, pgAdmin |
@@ -117,7 +119,7 @@ Startup flow:
 3. Flyway applies database migrations when enabled.
 4. The API listens on port `8080` by default.
 5. Public endpoints are available for auth, market prices, health probes, and Swagger/OpenAPI.
-6. Protected endpoints, including operational metrics, require a valid JWT Bearer token.
+6. Protected endpoints require a valid JWT Bearer token; non-health actuator endpoints additionally require the ADMIN role.
 7. CORS origins and auth/market rate limits are environment-configurable.
 
 ### Frontend
@@ -163,7 +165,7 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8080/api
 ```text
 Authorization: Bearer <token>
 ```
-7. If a protected frontend request receives `401` or `403`, the stale token and active profile are cleared and the dashboard prompts the user to log in again.
+7. Protected API `401` clears an expired session, synchronizing the page and other tabs. A permission-denied `403` does not log out a valid user; an old request cannot clear a newer login.
 
 ### Transaction Flow
 
@@ -245,7 +247,7 @@ Current API endpoints:
 | `GET` | `/api/health` | No | Return a lightweight application health response |
 | `GET` | `/actuator/health/readiness` | No | Return Actuator readiness status |
 | `GET` | `/actuator/health/liveness` | No | Return Actuator liveness status |
-| `GET` | `/actuator/metrics` | Yes | List available Micrometer metrics |
+| `GET` | `/actuator/metrics` | ADMIN | List available Micrometer metrics |
 | `POST` | `/api/auth/register` | No | Register and receive a JWT |
 | `POST` | `/api/auth/login` | No | Log in and receive a JWT |
 | `GET` | `/api/market/prices?symbols=BTC,ETH` | No | Fetch current prices for supported mapped symbols |
@@ -336,7 +338,7 @@ cd backend
 
 The backend tests use:
 
-- JUnit 5
+- JUnit Jupiter 6
 - Spring Boot Test
 - MockMvc
 - Mockito
@@ -401,7 +403,7 @@ Frontend environment variables:
 - Price refresh currently happens lazily through API calls and an in-memory cache.
 - Current supported market symbols are exposed by `GET /api/market/supported-coins`.
 - Unsupported symbols can still be recorded manually, but portfolio UI flags missing market data.
-- Dashboard protected API failures clear stale auth state when the backend returns `401` or `403`.
+- Dashboard protected API failures clear stale auth state on `401`, not ordinary `403` permission denials.
 - Dashboard portfolio, transaction, and performance-history sections now load and fail independently.
 - Backend CORS defaults to `http://localhost:3000`; production must provide explicit allowed origins.
 - Auth and market-data routes use an in-memory, per-application-instance rate limiter.

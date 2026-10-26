@@ -6,6 +6,7 @@ type Point = {
   x: string; // ISO timestamp
   y1: number; // totalCurrentValueUsd
   y2: number; // totalProfitLossUsd
+  valid?: boolean;
 };
 
 type Props = {
@@ -15,7 +16,7 @@ type Props = {
 };
 
 export default function MiniPerformanceChart({ points, height = 200, padding = 24 }: Props) {
-  if (!points || points.length === 0) {
+  if (!points || points.length === 0 || points.every(point => point.valid === false)) {
     return (
       <div className="h-[200px] flex items-center justify-center text-sm text-gray-500">No chart data</div>
     );
@@ -27,7 +28,7 @@ export default function MiniPerformanceChart({ points, height = 200, padding = 2
 
   const valuesY1 = points.map(p => p.y1);
   const valuesY2 = points.map(p => p.y2);
-  const allValues = [...valuesY1, ...valuesY2];
+  const allValues = points.filter(point => point.valid !== false).flatMap(point => [point.y1, point.y2]);
   const max = Math.max(...allValues);
   const min = Math.min(...allValues);
   const range = max - min || 1;
@@ -38,15 +39,17 @@ export default function MiniPerformanceChart({ points, height = 200, padding = 2
   const pathFor = (values: number[]) => {
     return values
       .map((v, i) => {
+        if (points[i].valid === false) return "";
         const x = xForIndex(i);
         const y = yForValue(v);
-        return `${i === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+        return `${i === 0 || points[i - 1].valid === false ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
       })
       .join(" ");
   };
 
   const pointsToCircles = (values: number[], color: string) => {
     return values.map((v, i) => {
+      if (points[i].valid === false) return null;
       const x = xForIndex(i);
       const y = yForValue(v);
       return <circle key={i + color} cx={x} cy={y} r={2.5} fill={color} />;

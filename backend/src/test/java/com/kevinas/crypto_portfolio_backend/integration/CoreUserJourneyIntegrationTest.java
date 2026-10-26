@@ -163,7 +163,7 @@ class CoreUserJourneyIntegrationTest extends IntegrationTestSupport {
     @Test
     void shouldRejectPortfolioSummaryRequest_withoutJwtToken() throws Exception {
         mockMvc.perform(get("/api/portfolio/summary"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -181,7 +181,7 @@ class CoreUserJourneyIntegrationTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/transactions")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(buyBody))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
     @Test
     void shouldRejectSellTransaction_whenUserTriesToSellMoreThanTheyOwn() throws Exception {

@@ -61,6 +61,12 @@ test("registers, logs in, creates a transaction, and shows dashboard data", asyn
   );
   await expect(page.getByTestId("portfolio-card-assets")).toContainText("1");
 
+  for (const width of [360, 390, 768, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(page.getByTestId("holding-row-BTC")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  }
+
   await page.getByRole("button", { name: "Edit" }).click();
   const editForm = page.getByRole("form", { name: "Edit BTC transaction" });
   await editForm.getByLabel("Price USD").fill("55000");
@@ -68,6 +74,18 @@ test("registers, logs in, creates a transaction, and shows dashboard data", asyn
 
   await expect(page.getByTestId("transaction-row-BTC-buy")).toContainText("$55,000.00");
   await expect(page.getByTestId("holding-row-BTC")).toContainText("$55,000.00");
+
+  const downloadReady = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export CSV" }).click();
+  const download = await downloadReady;
+  expect(download.suggestedFilename()).toMatch(/^transactions-.*\.csv$/);
+  const stream = await download.createReadStream();
+  if (!stream) throw new Error("CSV download was not readable");
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+  const csv = Buffer.concat(chunks).toString("utf8");
+  expect(csv).toContain('"BTC","Bitcoin","1","55000"');
+  expect(csv.split("\n")).toHaveLength(2);
 
   page.once("dialog", dialog => dialog.accept());
   await page.getByRole("button", { name: "Delete" }).click();

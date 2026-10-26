@@ -2,18 +2,20 @@
 
 A full-stack crypto portfolio tracker for recording crypto `BUY` and `SELL` transactions, viewing current holdings, tracking market value, and calculating realised and unrealised profit/loss.
 
-The app is transaction-driven. Users write transactions, the backend updates stored holdings as the source of truth for open positions, transactions remain the audit log and realised P/L source, and portfolio snapshots capture performance history.
+The app is transaction-driven. The backend replays active transaction revisions to rebuild stored holdings for open positions, preserves transaction revisions as an audit log, and records portfolio snapshots for performance history.
+
+Project status and next work: [repository audit and roadmap](docs/PROJECT_AUDIT.md), updated 2026-10-25. It records confirmed calculation/frontend issues, dependency advisory triage, and the recommended portfolio-demo milestones. The [working backlog](docs/tasklist.MD) distinguishes implemented features from remaining work.
 
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Backend | Java 25 LTS, Spring Boot 4.1.0 |
+| Backend | Java 25 LTS, Spring Boot 4.1.2 |
 | API | Spring MVC REST controllers |
 | Security | Spring Security, JWT, BCrypt |
 | Database | PostgreSQL, Spring Data JPA, Hibernate, Flyway |
 | Market data | CoinGecko-compatible API via `RestTemplate` |
-| Backend tests | JUnit 5, Spring Boot Test, MockMvc, H2, PostgreSQL Testcontainers |
+| Backend tests | JUnit Jupiter 6, Spring Boot Test, MockMvc, H2, PostgreSQL Testcontainers |
 | Frontend | Next.js 16.4.3, React 19.2.8, TypeScript |
 | Styling | Tailwind CSS |
 | Frontend tests | Vitest, Testing Library, Playwright config |
@@ -22,10 +24,10 @@ The app is transaction-driven. Users write transactions, the backend updates sto
 ## Current Features
 
 - Register and log in with email/password.
-- Store JWT auth in the frontend and clear stale sessions on protected API `401` or `403`.
+- Store JWT auth in the frontend, synchronize logout/expiry across tabs, and clear expired sessions on protected API `401` (not ordinary permission-denied `403`).
 - Record `BUY` and `SELL` transactions.
 - Prevent selling more than the current stored holding quantity.
-- Maintain stored holdings as the source of truth for open positions.
+- Maintain stored holdings as the current-position read model derived from the active ledger.
 - Calculate average buy price, invested value, current value, realised P/L, unrealised P/L, and total P/L.
 - Fetch public watchlist prices and backend-supported CoinGecko symbol mappings.
 - Show unsupported market-data states instead of treating missing prices as real zero values.
@@ -181,7 +183,8 @@ Build and run the backend image from the `backend` directory:
 docker build -t crypto-portfolio-api .
 docker run --rm -p 8080:8080 \
   -e SPRING_PROFILES_ACTIVE=prod \
-  -e DB_URL='jdbc:postgresql://<host>/<database>?sslmode=require' \
+  --mount type=bind,src=/absolute/path/to/provider-ca.crt,dst=/certs/provider-ca.crt,readonly \
+  -e DB_URL='jdbc:postgresql://<host>/<database>?sslmode=verify-full&sslrootcert=/certs/provider-ca.crt' \
   -e DB_USERNAME='<database-user>' \
   -e DB_PASSWORD='<database-password>' \
   -e JWT_SECRET='<at-least-32-byte-secret>' \
@@ -189,7 +192,7 @@ docker run --rm -p 8080:8080 \
   crypto-portfolio-api
 ```
 
-The hosting platform should provide `PORT`. The public application check is `GET /api/health` and returns `{ "status": "ok" }`. Kubernetes-style readiness and liveness probes are public at `GET /actuator/health/readiness` and `GET /actuator/health/liveness`; operational metrics are available only to authenticated users at `GET /actuator/metrics`.
+The image runs as a non-root user and defaults to `prod`. Production requires a unique signing key, explicit database credentials, verified PostgreSQL TLS (install the provider's trusted certificate), and exact HTTPS CORS origins. The hosting platform should provide `PORT`. The public application check is `GET /api/health`. Readiness and liveness probes are public at `/actuator/health/readiness` and `/actuator/health/liveness`; `/actuator/metrics` requires the `ADMIN` role, not just a registered account. Follow the [release and restore runbook](docs/RELEASE_RUNBOOK.md) before deployment.
 
 ### Frontend
 
@@ -324,7 +327,9 @@ Current backend-supported symbols:
 BTC, ETH, SOL, LINK, DOGE, ADA, XRP, DOT, MATIC, AVAX, UNI, ATOM, XLM, LTC, TRX, BCH, ALGO, ICP, NEAR, VET, BNB
 ```
 
-Unsupported symbols can still be recorded manually, but market-value fields are flagged with `marketPriceAvailable=false` and portfolio totals set `hasUnsupportedMarketData=true`.
+Unsupported symbols can still be recorded manually, but market-value fields are flagged with `marketPriceAvailable=false` and portfolio totals set `hasUnsupportedMarketData=true`. `/api/market/quotes` adds `fetchedAt` and `FRESH`/`STALE`/`UNAVAILABLE` status; the legacy prices map remains compatible. Fresh quotes last 60 seconds, fallback expires after five minutes, and network waits are bounded (2s connect, 3s read). Stale totals are labelled. Snapshots with missing/stale data and legacy snapshots have `valuationComplete=false` and are excluded from chart lines.
+
+Trade quantities support eight decimal places; unit prices support twelve. Cost basis and realised profit retain intermediate precision and round to cents only at USD response/summary boundaries. Displayed rounded row amounts or realised/unrealised components can differ by a cent from correctly aggregated totals; totals use underlying exact amounts, not sums of rounded displays. V5–V7 preserve audit revisions and rebuild legacy cost basis using retained prices; input discarded by old cent-rounding cannot be recovered automatically. Page size is limited to 100; CSV/legacy full-history output is limited to 10,000 records. Exports neutralize formula-leading text. Ledger replay remains linear in active transaction count.
 
 ## Troubleshooting
 
@@ -341,6 +346,8 @@ Unsupported symbols can still be recorded manually, but market-value fields are 
 
 ## Known Limitations
 
+- Sub-cent valuation and weighted-average cost precision have known correctness issues; see A02/A03 in the [audit](docs/PROJECT_AUDIT.md). The existing green tests do not cover these cases.
+- Cached quote freshness and historical valuation completeness are not yet exposed to the frontend. Backend dependency advisories and other hardening work are tracked in the audit.
 - Supported market symbols are fixed in backend code and exposed through `/api/market/supported-coins`.
 - Unsupported symbols can be recorded but are excluded from known market-value totals.
 - Portfolio snapshots are best-effort after a committed transaction and scheduled by the backend process. A snapshot failure is logged but never rolls back valid transaction and holding writes; missed app uptime means missed scheduled snapshots.

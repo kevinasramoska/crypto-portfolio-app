@@ -26,6 +26,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -112,16 +113,22 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     @Override
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public List<TransactionResponse> getTransactionsForCurrentUser() {
         User user = getCurrentUser();
-
-        return transactionRepository.findByUserAndVoidedAtIsNullOrderByLedgerSequenceDesc(user).stream()
+        Page<Transaction> page = transactionRepository.findByUserAndVoidedAtIsNull(user,
+                PageRequest.of(0, 10000, Sort.by(Sort.Direction.DESC, "ledgerSequence")));
+        if (page.hasNext()) throw new IllegalArgumentException("Use paginated history for more than 10,000 transactions");
+        return page.getContent().stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     @Override
     public PaginatedTransactionsResponse getTransactionsForCurrentUserPaginated(int pageNumber, int pageSize) {
+        if (pageNumber < 0 || pageSize < 1 || pageSize > 100) {
+            throw new IllegalArgumentException("Page must be non-negative and size must be between 1 and 100");
+        }
         User user = getCurrentUser();
 
         Pageable pageable = PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "ledgerSequence"));
@@ -145,27 +152,11 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     public TransactionSummaryResponse getTransactionSummary() {
         User user = getCurrentUser();
-        List<Transaction> transactions = transactionRepository
-                .findByUserAndVoidedAtIsNullOrderByLedgerSequenceDesc(user);
-
-        BigDecimal totalBuyVolume = transactions.stream()
-                .filter(transaction -> transaction.getType() == TransactionType.BUY)
-                .map(Transaction::getTotalValueUsd)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        BigDecimal totalSellVolume = transactions.stream()
-                .filter(transaction -> transaction.getType() == TransactionType.SELL)
-                .map(Transaction::getTotalValueUsd)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        BigDecimal totalRealisedProfit = transactions.stream()
-                .map(Transaction::getRealisedProfitUsd)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
+        var totals = transactionRepository.aggregateActiveTotals(user);
         return new TransactionSummaryResponse(
-                scaleMoney(totalBuyVolume),
-                scaleMoney(totalSellVolume),
-                scaleMoney(totalRealisedProfit)
+                scaleMoney(totals.totalBuyVolumeUsd()),
+                scaleMoney(totals.totalSellVolumeUsd()),
+                scaleMoney(totals.totalRealisedProfitUsd())
         );
     }
 
@@ -176,7 +167,6 @@ public class TransactionServiceImpl implements TransactionService {
 
         for (Transaction transaction : transactions) {
             transaction.setQuantity(scaleQuantity(transaction.getQuantity()));
-            transaction.setPriceUsd(scaleMoney(transaction.getPriceUsd()));
             transaction.setTotalValueUsd(scaleMoney(
                     transaction.getQuantity().multiply(transaction.getPriceUsd())
             ));
@@ -210,19 +200,24 @@ public class TransactionServiceImpl implements TransactionService {
             return new Position(
                     transaction.getCoin(),
                     scaleQuantity(transaction.getQuantity()),
-                    scaleMoney(transaction.getPriceUsd())
+                    transaction.getQuantity().multiply(transaction.getPriceUsd()),
+                    transaction.getAssetName()
             );
         }
 
         BigDecimal updatedQuantity = position.quantity.add(transaction.getQuantity());
-        BigDecimal updatedAveragePrice = position.quantity.multiply(position.averageBuyPriceUsd)
-                .add(transaction.getQuantity().multiply(transaction.getPriceUsd()))
-                .divide(updatedQuantity, 8, RoundingMode.HALF_UP);
+        if (updatedQuantity.precision() - updatedQuantity.scale() > 11) {
+            throw new IllegalArgumentException("Total asset quantity exceeds supported limit");
+        }
+        BigDecimal updatedCost = position.costBasisUsd
+                .add(transaction.getQuantity().multiply(transaction.getPriceUsd()));
+        requireMoneyRange(updatedCost);
 
         return new Position(
                 transaction.getCoin(),
                 scaleQuantity(updatedQuantity),
-                scaleMoney(updatedAveragePrice)
+                updatedCost,
+                transaction.getAssetName()
         );
     }
 
@@ -231,18 +226,23 @@ public class TransactionServiceImpl implements TransactionService {
             throw new InsufficientHoldingsException(insufficientHoldingsMessage);
         }
 
-        BigDecimal realisedProfit = transaction.getPriceUsd()
-                .subtract(position.averageBuyPriceUsd)
-                .multiply(transaction.getQuantity());
-        transaction.setRealisedProfitUsd(scaleMoney(realisedProfit));
+        BigDecimal allocatedCost = position.quantity.compareTo(transaction.getQuantity()) == 0
+                ? position.costBasisUsd
+                : position.costBasisUsd.multiply(transaction.getQuantity())
+                    .divide(position.quantity, 20, RoundingMode.HALF_UP);
+        BigDecimal realisedProfit = transaction.getPriceUsd().multiply(transaction.getQuantity())
+                .subtract(allocatedCost);
+        transaction.setRealisedProfitUsd(realisedProfit);
 
         BigDecimal remainingQuantity = scaleQuantity(position.quantity.subtract(transaction.getQuantity()));
         return remainingQuantity.compareTo(BigDecimal.ZERO) == 0
                 ? null
-                : new Position(transaction.getCoin(), remainingQuantity, position.averageBuyPriceUsd);
+                : new Position(transaction.getCoin(), remainingQuantity,
+                        position.costBasisUsd.subtract(allocatedCost), position.assetName);
     }
 
     private void rebuildHoldings(User user, Map<Long, Position> positions) {
+        requireMoneyRange(positions.values().stream().map(Position::costBasisUsd).reduce(BigDecimal.ZERO, BigDecimal::add));
         holdingRepository.deleteAllByUser(user);
         holdingRepository.flush();
 
@@ -251,7 +251,9 @@ public class TransactionServiceImpl implements TransactionService {
                         .user(user)
                         .coin(position.coin)
                         .quantity(position.quantity)
-                        .averageBuyPriceUsd(position.averageBuyPriceUsd)
+                        .averageBuyPriceUsd(position.costBasisUsd.divide(position.quantity, 12, RoundingMode.HALF_UP))
+                        .costBasisUsd(position.costBasisUsd)
+                        .assetName(position.assetName)
                         .build())
                 .toList();
 
@@ -265,12 +267,16 @@ public class TransactionServiceImpl implements TransactionService {
             Long ledgerSequence,
             Instant createdAt
     ) {
+        requireMoneyRange(request.quantity().multiply(request.priceUsd()));
         return Transaction.builder()
                 .user(user)
                 .coin(coin)
                 .type(request.type())
                 .quantity(scaleQuantity(request.quantity()))
-                .priceUsd(scaleMoney(request.priceUsd()))
+                .priceUsd(request.priceUsd())
+                .assetName(com.kevinas.crypto_portfolio_backend.util.CoinGeckoSymbolMapper.getSupportedCoins()
+                        .stream().filter(item -> item.symbol().equals(request.symbol()))
+                        .map(item -> item.name()).findFirst().orElse(request.name()))
                 .totalValueUsd(scaleMoney(request.quantity().multiply(request.priceUsd())))
                 .realisedProfitUsd(scaleMoney(BigDecimal.ZERO))
                 .ledgerSequence(ledgerSequence)
@@ -280,12 +286,11 @@ public class TransactionServiceImpl implements TransactionService {
 
     private Coin resolveCoin(TransactionRequest request) {
         return coinRepository.findBySymbolIgnoreCase(request.symbol())
-                .orElseGet(() -> coinRepository.save(
-                        Coin.builder()
-                                .symbol(request.symbol().toUpperCase())
-                                .name(request.name())
-                                .build()
-                ));
+                .orElseGet(() -> {
+                    coinRepository.insertIfAbsent(request.symbol());
+                    return coinRepository.findBySymbolIgnoreCase(request.symbol())
+                            .orElseThrow(() -> new IllegalStateException("Asset catalog insertion failed"));
+                });
     }
 
     private Transaction getOwnedTransaction(Long transactionId, User user) {
@@ -313,10 +318,10 @@ public class TransactionServiceImpl implements TransactionService {
         return new TransactionResponse(
                 transaction.getId(),
                 transaction.getCoin().getSymbol(),
-                transaction.getCoin().getName(),
+                transaction.getAssetName() == null ? transaction.getCoin().getName() : transaction.getAssetName(),
                 transaction.getType(),
                 scaleQuantity(transaction.getQuantity()),
-                scaleMoney(transaction.getPriceUsd()),
+                transaction.getPriceUsd(),
                 scaleMoney(transaction.getTotalValueUsd()),
                 scaleMoney(transaction.getRealisedProfitUsd()),
                 transaction.getCreatedAt()
@@ -340,9 +345,19 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     private BigDecimal scaleQuantity(BigDecimal value) {
-        return value.setScale(8, RoundingMode.HALF_UP);
+        try {
+            return value.setScale(8, RoundingMode.UNNECESSARY);
+        } catch (ArithmeticException ex) {
+            throw new IllegalArgumentException("Quantity supports at most 8 decimal places");
+        }
     }
 
-    private record Position(Coin coin, BigDecimal quantity, BigDecimal averageBuyPriceUsd) {
+    private void requireMoneyRange(BigDecimal value) {
+        if (value.abs().compareTo(new BigDecimal("99999999999999999.99")) > 0) {
+            throw new IllegalArgumentException("Transaction or cost basis exceeds supported USD limit");
+        }
+    }
+
+    private record Position(Coin coin, BigDecimal quantity, BigDecimal costBasisUsd, String assetName) {
     }
 }

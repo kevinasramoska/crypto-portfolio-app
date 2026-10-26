@@ -14,6 +14,17 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler({org.springframework.http.converter.HttpMessageNotReadableException.class,
+            jakarta.validation.ConstraintViolationException.class})
+    public ResponseEntity<Map<String, Object>> handleMalformedInput(Exception ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "Invalid request body or field values");
+    }
+
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataConflict(Exception ex) {
+        return buildResponse(HttpStatus.CONFLICT, "Request conflicts with existing data or supported limits");
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());

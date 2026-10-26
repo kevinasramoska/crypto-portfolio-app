@@ -37,7 +37,7 @@ export default function PerformanceHistory({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-semibold">Performance history</h2>
-          <p className="text-sm text-gray-500">Snapshots are created after transactions.</p>
+          <p className="text-sm text-gray-500">Point-in-time snapshots after transactions and daily (UTC). Not a cash-flow-adjusted return.</p>
         </div>
         <div className="flex rounded-lg border border-gray-800 bg-gray-950/60 p-1">
           {RANGES.map(option => (
@@ -69,11 +69,15 @@ export default function PerformanceHistory({
         </div>
       ) : (
         <>
+          {history.history.some(point => point.valuationComplete !== true) && (
+            <p role="status" className="text-sm text-amber-200">Incomplete, stale, or legacy valuations are excluded from the chart.</p>
+          )}
           <MiniPerformanceChart
             points={history.history.map(p => ({
               x: p.snapshotAt,
               y1: p.totalCurrentValueUsd,
               y2: p.totalProfitLossUsd,
+              valid: p.valuationComplete === true,
             }))}
           />
 
@@ -92,8 +96,8 @@ export default function PerformanceHistory({
                   <tr key={point.snapshotAt} className="border-t border-gray-900/40">
                     <td className="px-6 py-4">{formatDate(point.snapshotAt)}</td>
                     <td className="px-6 py-4 text-right">{currencyFormatter.format(point.totalInvestedUsd)}</td>
-                    <td className="px-6 py-4 text-right">{currencyFormatter.format(point.totalCurrentValueUsd)}</td>
-                    <td className="px-6 py-4 text-right">{currencyFormatter.format(point.totalProfitLossUsd)}</td>
+                    <td className="px-6 py-4 text-right">{point.valuationComplete === true ? currencyFormatter.format(point.totalCurrentValueUsd) : "Unverified valuation"}</td>
+                    <td className="px-6 py-4 text-right">{point.valuationComplete === true ? currencyFormatter.format(point.totalProfitLossUsd) : "Unavailable"}</td>
                   </tr>
                 ))}
               </tbody>

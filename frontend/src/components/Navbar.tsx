@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getActiveProfile, getToken, logout, type ActiveProfile } from "@/lib/auth";
+import { getActiveProfile, getToken, logout, subscribeAuth, type ActiveProfile } from "@/lib/auth";
 
 type Props = {
   showAuthLinks?: boolean;
@@ -15,6 +15,7 @@ export default function Navbar({ showAuthLinks = true }: Props) {
   const pathname = usePathname();
 
   useEffect(() => {
+    const unsubscribe = subscribeAuth(() => setProfile(getToken() ? getActiveProfile() : null));
     queueMicrotask(() => {
       if (!getToken()) {
         setProfile(null);
@@ -22,6 +23,7 @@ export default function Navbar({ showAuthLinks = true }: Props) {
       }
       setProfile(getActiveProfile());
     });
+    return unsubscribe;
   }, [pathname]);
 
   function handleLogout() {

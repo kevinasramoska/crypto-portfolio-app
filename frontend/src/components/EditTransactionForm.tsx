@@ -40,6 +40,10 @@ export default function EditTransactionForm({ transaction, onSubmit, onCancel }:
       setError("Quantity must be greater than zero.");
       return;
     }
+    if (!priceUsd.trim()) {
+      setError("Price is required. Enter 0 explicitly for a free asset.");
+      return;
+    }
     if (!Number.isFinite(parsedPrice) || parsedPrice < 0) {
       setError("Price must be zero or greater.");
       return;
@@ -115,7 +119,7 @@ export default function EditTransactionForm({ transaction, onSubmit, onCancel }:
             className="rounded border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white"
             type="number"
             min="0"
-            step="0.01"
+            step="0.000000000001"
             value={priceUsd}
             onChange={event => setPriceUsd(event.target.value)}
             disabled={loading}

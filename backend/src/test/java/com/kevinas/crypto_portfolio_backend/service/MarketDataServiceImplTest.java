@@ -21,11 +21,43 @@ class MarketDataServiceImplTest {
 
     private RestTemplate restTemplate;
     private MarketDataServiceImpl marketDataService;
+    private java.time.Clock clock;
+    private final java.time.Instant start = java.time.Instant.parse("2026-10-25T12:00:00Z");
 
     @BeforeEach
     void setUp() {
         restTemplate = mock(RestTemplate.class);
-        marketDataService = new MarketDataServiceImpl(restTemplate, API_BASE_URL);
+        clock = mock(java.time.Clock.class);
+        when(clock.instant()).thenReturn(start);
+        marketDataService = new MarketDataServiceImpl(restTemplate, API_BASE_URL, clock);
+    }
+
+    @Test
+    void upstreamFailureBacksOffAndNeverUsesNonPositivePrices() {
+        when(restTemplate.getForObject(anyString(), eq(Map.class))).thenReturn(Map.of("bitcoin", Map.of("usd", -1)));
+        assertTrue(marketDataService.getCurrentPrices(List.of("BTC")).isEmpty());
+        assertTrue(marketDataService.getCurrentPrices(List.of("BTC")).isEmpty());
+        verify(restTemplate, times(1)).getForObject(anyString(), eq(Map.class));
+    }
+
+    @Test
+    void concurrentRefreshDoesNotBlockAnotherCaller() throws Exception {
+        var started = new java.util.concurrent.CountDownLatch(1);
+        var release = new java.util.concurrent.CountDownLatch(1);
+        when(restTemplate.getForObject(anyString(), eq(Map.class))).thenAnswer(invocation -> {
+            started.countDown();
+            if (!release.await(10, java.util.concurrent.TimeUnit.SECONDS)) throw new IllegalStateException("test timeout");
+            return Map.of("bitcoin", Map.of("usd", 1));
+        });
+        try (var executor = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+            var first = executor.submit(() -> marketDataService.getCurrentPrices(List.of("BTC")));
+            assertTrue(started.await(10, java.util.concurrent.TimeUnit.SECONDS));
+            try {
+                var second = executor.submit(() -> marketDataService.getCurrentPrices(List.of("BTC")));
+                assertTrue(second.get(5, java.util.concurrent.TimeUnit.SECONDS).isEmpty());
+            } finally { release.countDown(); }
+            assertEquals(BigDecimal.ONE, first.get(5, java.util.concurrent.TimeUnit.SECONDS).get("BTC"));
+        }
     }
 
     // 1. Original behaviour (still required)
@@ -85,10 +117,16 @@ class MarketDataServiceImplTest {
         Map<String, BigDecimal> first = marketDataService.getCurrentPrices(List.of("BTC"));
 
         // simulate another call (will attempt refresh but fail)
+        when(clock.instant()).thenReturn(start.plusSeconds(61));
         Map<String, BigDecimal> second = marketDataService.getCurrentPrices(List.of("BTC"));
 
         assertEquals(new BigDecimal("60000"), first.get("BTC"));
         assertEquals(new BigDecimal("60000"), second.get("BTC")); // fallback worked
+        assertEquals("STALE", marketDataService.getPriceMetadata("BTC").status());
+        verify(restTemplate, times(2)).getForObject(anyString(), eq(Map.class));
+        when(clock.instant()).thenReturn(start.plusSeconds(301));
+        assertFalse(marketDataService.getCurrentPrices(List.of("BTC")).containsKey("BTC"));
+        assertEquals("UNAVAILABLE", marketDataService.getPriceMetadata("BTC").status());
     }
 
     @Test

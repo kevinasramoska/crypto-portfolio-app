@@ -106,6 +106,10 @@ export default function AddTransactionForm({ onSubmit, disabled }: Props) {
       setError("Quantity must be greater than zero.");
       return;
     }
+    if (!priceUsd.trim()) {
+      setError("Price is required. Enter 0 explicitly for a free asset.");
+      return;
+    }
     if (!Number.isFinite(parsedPrice) || parsedPrice < 0) {
       setError("Price must be zero or greater.");
       return;
@@ -219,7 +223,7 @@ export default function AddTransactionForm({ onSubmit, disabled }: Props) {
             placeholder="65000"
             type="number"
             min="0"
-            step="0.01"
+            step="0.000000000001"
             value={priceUsd}
             onChange={event => setPriceUsd(event.target.value)}
             disabled={disabled || loading}

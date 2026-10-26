@@ -16,6 +16,18 @@ vi.mock("@/lib/auth", () => ({
 }));
 
 describe("api client", () => {
+  it("does not sign out on an authorization denial", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue(new Response(null, { status: 403 }));
+    await expect(getPortfolioSummary()).rejects.toThrow("Failed to fetch portfolio summary");
+    expect(clearAuthSessionMock).not.toHaveBeenCalled();
+  });
+
+  it("does not clear a newer session when an older request gets 401", async () => {
+    authHeaderMock.mockReturnValueOnce({ Authorization: "Bearer old" }).mockReturnValue({ Authorization: "Bearer new" });
+    vi.spyOn(global, "fetch").mockResolvedValue(new Response(null, { status: 401 }));
+    await expect(getPortfolioSummary()).rejects.toThrow(AUTH_REQUIRED_MESSAGE);
+    expect(clearAuthSessionMock).not.toHaveBeenCalled();
+  });
   beforeEach(() => {
     authHeaderMock.mockReset();
     clearAuthSessionMock.mockReset();

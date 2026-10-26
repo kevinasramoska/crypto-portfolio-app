@@ -3,6 +3,7 @@
 import { Fragment, useState } from "react";
 import EditTransactionForm from "@/components/EditTransactionForm";
 import { Transaction, TransactionPayload } from "@/lib/types";
+import { formatUnitPrice } from "@/lib/format";
 
 type Props = {
   transactions: Transaction[];
@@ -169,7 +170,7 @@ export default function TransactionsTable({
                     <div className="text-xs text-gray-500">{transaction.name}</div>
                   </td>
                   <td className="px-6 py-4 text-right tabular-nums">{formatQuantity(transaction.quantity)}</td>
-                  <td className="px-6 py-4 text-right tabular-nums">{currencyFormatter.format(transaction.priceUsd)}</td>
+                  <td className="px-6 py-4 text-right tabular-nums">{formatUnitPrice(transaction.priceUsd)}</td>
                   <td className="px-6 py-4 text-right tabular-nums">{currencyFormatter.format(transaction.totalValueUsd)}</td>
                   <td className={`px-6 py-4 text-right font-medium tabular-nums ${profitLossClass(transaction.realisedProfitUsd)}`}>
                     {currencyFormatter.format(transaction.realisedProfitUsd)}

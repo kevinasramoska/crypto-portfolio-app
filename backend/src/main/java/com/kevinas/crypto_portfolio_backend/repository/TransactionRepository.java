@@ -12,6 +12,11 @@ import java.util.List;
 import java.util.Optional;
 
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
+    @Query("select new com.kevinas.crypto_portfolio_backend.dto.TransactionSummaryResponse(" +
+            "coalesce(sum(case when t.type = com.kevinas.crypto_portfolio_backend.model.TransactionType.BUY then t.quantity * t.priceUsd else 0 end), 0), " +
+            "coalesce(sum(case when t.type = com.kevinas.crypto_portfolio_backend.model.TransactionType.SELL then t.quantity * t.priceUsd else 0 end), 0), " +
+            "coalesce(sum(t.realisedProfitUsd), 0)) from Transaction t where t.user = :user and t.voidedAt is null")
+    com.kevinas.crypto_portfolio_backend.dto.TransactionSummaryResponse aggregateActiveTotals(@Param("user") User user);
     List<Transaction> findByUserAndVoidedAtIsNullOrderByLedgerSequenceDesc(User user);
     List<Transaction> findByUserAndVoidedAtIsNullOrderByLedgerSequenceAsc(User user);
     Page<Transaction> findByUserAndVoidedAtIsNull(User user, Pageable pageable);

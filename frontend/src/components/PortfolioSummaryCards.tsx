@@ -32,7 +32,7 @@ export default function PortfolioSummaryCards({ summary, loading }: Props) {
     {
       label: "Current value",
       value: formatCurrency(summary?.totalCurrentValueUsd),
-      helper: "Live market valuation",
+      helper: summary?.hasStaleMarketData ? "Cached market valuation" : "Latest market valuation",
     },
     {
       label: "Invested",
@@ -76,6 +76,11 @@ export default function PortfolioSummaryCards({ summary, loading }: Props) {
 
   return (
     <div className="space-y-4">
+      {summary?.hasStaleMarketData && (
+        <p role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+          Market data is stale or unavailable. These totals are not a live, complete valuation.
+        </p>
+      )}
       {hasUnsupportedMarketData && (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
           Some holdings have no supported market data. Current value and P/L are based on priced assets only.
@@ -101,6 +106,7 @@ export default function PortfolioSummaryCards({ summary, loading }: Props) {
         ))}
       </div>
 
+      <p className="text-xs text-gray-500">Totals are calculated before rounding; displayed components may differ by a cent.</p>
       <ProfitLossBreakdown summary={summary} />
     </div>
   );

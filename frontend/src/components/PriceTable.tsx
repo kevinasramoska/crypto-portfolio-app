@@ -1,4 +1,5 @@
 import { Holding } from "@/lib/types";
+import { formatUnitPrice } from "@/lib/format";
 
 type Props = {
   holdings: Holding[];
@@ -106,9 +107,9 @@ export default function PriceTable({
                   <div className="text-xs text-gray-500">{holding.name}</div>
                 </td>
                 <td className="px-6 py-4 tabular-nums">{formatQuantity(holding.quantity)}</td>
-                <td className="px-6 py-4 text-right tabular-nums">{currencyFormatter.format(holding.averageBuyPriceUsd)}</td>
+                <td className="px-6 py-4 text-right tabular-nums">{formatUnitPrice(holding.averageBuyPriceUsd)}</td>
                 <td className="px-6 py-4 text-right tabular-nums">
-                  {formatMarketValue(holding, holding.currentPriceUsd, "No market data")}
+                  {holding.marketPriceAvailable ? formatUnitPrice(holding.currentPriceUsd) : "No market data"}
                 </td>
                 <td className="px-6 py-4 text-right tabular-nums">{currencyFormatter.format(holding.investedValueUsd)}</td>
                 <td className="px-6 py-4 text-right tabular-nums">

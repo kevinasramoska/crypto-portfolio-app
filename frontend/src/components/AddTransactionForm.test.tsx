@@ -13,6 +13,22 @@ describe("AddTransactionForm", () => {
     getSupportedCoinsMock.mockResolvedValue([]);
   });
 
+  it.each(["", "0"])("requires an explicit price (input %j)", async price => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<AddTransactionForm onSubmit={onSubmit} />);
+    fireEvent.change(screen.getByLabelText("Symbol"), { target: { value: "BTC" } });
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Bitcoin" } });
+    fireEvent.change(screen.getByLabelText("Quantity"), { target: { value: "100" } });
+    fireEvent.change(screen.getByLabelText("Price USD"), { target: { value: price } });
+    fireEvent.click(screen.getByRole("button", { name: "Save transaction" }));
+    if (!price) {
+      expect(await screen.findByText(/Price is required/)).toBeInTheDocument();
+      expect(onSubmit).not.toHaveBeenCalled();
+    } else {
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ priceUsd: 0 })));
+    }
+  });
+
   it("renders the transaction form shell", () => {
     render(<AddTransactionForm onSubmit={vi.fn()} />);
 
