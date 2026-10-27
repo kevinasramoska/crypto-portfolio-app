@@ -6,6 +6,18 @@ The app is transaction-driven. The backend replays active transaction revisions 
 
 Project status and next work: [repository audit and roadmap](docs/PROJECT_AUDIT.md), updated 2026-10-25. It records confirmed calculation/frontend issues, dependency advisory triage, and the recommended portfolio-demo milestones. The [working backlog](docs/tasklist.MD) distinguishes implemented features from remaining work.
 
+## Live demo
+
+**[crypto-portfolio-app-hazel.vercel.app](https://crypto-portfolio-app-hazel.vercel.app)** · API health: [`/actuator/health`](https://crypto-portfolio-api-omp5.onrender.com/actuator/health)
+
+| Part | Hosting |
+|---|---|
+| Next.js frontend | Vercel |
+| Spring Boot API (Docker) | Render |
+| PostgreSQL | Neon (TLS `verify-full`) |
+
+Runs on free tiers: the API sleeps after ~15 minutes idle, so the first request can take about a minute while it wakes. Register a throwaway account and use fictional data only. Setup and verification steps: [free-tier deployment guide](docs/FREE_TIER_DEPLOYMENT.md).
+
 ## Tech Stack
 
 | Layer | Technology |
