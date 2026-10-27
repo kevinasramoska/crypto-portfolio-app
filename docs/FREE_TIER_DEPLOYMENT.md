@@ -20,12 +20,15 @@ still applies before any real-user data is stored.
 
 1. Create a Neon project in **AWS Europe (Frankfurt)** (same region as the Render service).
 2. Create a database (e.g. `cryptodb`) and copy its connection details.
-3. Build the JDBC URL. Neon presents a publicly trusted certificate, so full verification can use
-   the JVM trust store:
+3. Build the JDBC URL. Neon presents a publicly trusted certificate, so `verify-full` can validate it
+   against the runtime image's system CA bundle:
 
    ```text
-   jdbc:postgresql://<neon-host>/<database>?sslmode=verify-full&sslfactory=org.postgresql.ssl.DefaultJavaSSLFactory
+   jdbc:postgresql://<neon-host>/<database>?sslmode=verify-full&sslrootcert=/etc/pki/tls/certs/ca-bundle.crt
    ```
+
+   `ProductionSafetyConfig` requires exactly `sslmode=verify-full` and rejects `sslfactory` or
+   `sslhostnameverifier` overrides, so certificate and hostname checks cannot be weakened.
 
    Use the **direct** (non-pooler) host: Flyway and the scheduled snapshot job expect a normal session.
 

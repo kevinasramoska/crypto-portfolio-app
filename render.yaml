@@ -13,7 +13,8 @@ services:
     healthCheckPath: /actuator/health
     autoDeploy: true
     envVars:
-      # Neon JDBC URL, e.g. jdbc:postgresql://<host>/<db>?sslmode=verify-full&sslfactory=org.postgresql.ssl.DefaultJavaSSLFactory
+      # Neon JDBC URL, e.g. jdbc:postgresql://<host>/<db>?sslmode=verify-full&sslrootcert=/etc/pki/tls/certs/ca-bundle.crt
+      # (ProductionSafetyConfig rejects sslfactory/sslhostnameverifier overrides.)
       - key: DB_URL
         sync: false
       - key: DB_USERNAME
